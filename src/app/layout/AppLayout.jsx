@@ -1,8 +1,9 @@
-﻿import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 
-import { useAuth } from '@/hooks/useAuth'
+import { appConfig } from '@/constants/appConfig'
 import { getPostLoginRoute } from '@/features/auth/utils/authMessages'
+import { useAuth } from '@/hooks/useAuth'
 
 function linkClass({ isActive }) {
   return `rounded-lg px-3 py-2 text-sm font-medium transition ${
@@ -37,6 +38,11 @@ export function AppLayout() {
                   Landlord Dashboard
                 </NavLink>
               )}
+              {role === 'landlord' && (
+                <NavLink className={linkClass} to="/dashboard/landlord/listings">
+                  Manage Listings
+                </NavLink>
+              )}
               {role === 'tenant' && (
                 <NavLink className={linkClass} to="/dashboard/tenant">
                   Tenant Dashboard
@@ -47,6 +53,11 @@ export function AppLayout() {
                   Messages
                 </NavLink>
               )}
+              {role === 'tenant' && (
+                <NavLink className={linkClass} to="/payments">
+                  Payments
+                </NavLink>
+              )}
             </nav>
           </div>
 
@@ -55,9 +66,11 @@ export function AppLayout() {
               <>
                 <div className="hidden text-right sm:block">
                   <p className="text-xs font-semibold text-slate-800">{user?.email}</p>
-                  <p className="text-xs text-slate-500">{isEmailVerified ? 'Verified' : 'Not verified'}</p>
+                  {appConfig.enableEmailVerification && (
+                    <p className="text-xs text-slate-500">{isEmailVerified ? 'Verified' : 'Not verified'}</p>
+                  )}
                 </div>
-                {!isEmailVerified && (
+                {appConfig.enableEmailVerification && !isEmailVerified && (
                   <Link
                     className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800"
                     to="/auth/verify"

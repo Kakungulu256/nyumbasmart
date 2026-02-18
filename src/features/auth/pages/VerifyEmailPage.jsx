@@ -3,6 +3,7 @@ import toast from 'react-hot-toast'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { Button } from '@/components/ui/Button'
+import { appConfig } from '@/constants/appConfig'
 import { AuthCard } from '@/features/auth/components/AuthCard'
 import { getAuthErrorMessage, getPostLoginRoute } from '@/features/auth/utils/authMessages'
 import { useAuth } from '@/hooks/useAuth'
@@ -20,19 +21,20 @@ export function VerifyEmailPage() {
   const userId = searchParams.get('userId')
   const secret = searchParams.get('secret')
   const sent = searchParams.get('sent') === '1'
+  const isEmailVerificationEnabled = appConfig.enableEmailVerification
 
   const canVerifyFromLink = useMemo(() => Boolean(userId && secret), [secret, userId])
 
   useEffect(() => {
-    if (!sent) {
+    if (!isEmailVerificationEnabled || !sent) {
       return
     }
 
     toast.success('Verification email sent.')
-  }, [sent])
+  }, [isEmailVerificationEnabled, sent])
 
   useEffect(() => {
-    if (!canVerifyFromLink || verifying || verificationAttempted) {
+    if (!isEmailVerificationEnabled || !canVerifyFromLink || verifying || verificationAttempted) {
       return
     }
 
@@ -52,7 +54,7 @@ export function VerifyEmailPage() {
     }
 
     run()
-  }, [canVerifyFromLink, refreshSession, secret, userId, verificationAttempted, verifying])
+  }, [canVerifyFromLink, isEmailVerificationEnabled, refreshSession, secret, userId, verificationAttempted, verifying])
 
   const resendVerification = async () => {
     setSending(true)
@@ -71,6 +73,21 @@ export function VerifyEmailPage() {
 
   const continueToDashboard = () => {
     navigate(getPostLoginRoute(role), { replace: true })
+  }
+
+  if (!isEmailVerificationEnabled) {
+    return (
+      <AuthCard title="Email verification disabled" subtitle="Verification checks are currently turned off.">
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+          You can continue using the app without verifying your email for now.
+        </div>
+        <div className="text-sm text-slate-600">
+          <Link className="text-brand-700 hover:underline" to="/auth/login">
+            Back to login
+          </Link>
+        </div>
+      </AuthCard>
+    )
   }
 
   return (

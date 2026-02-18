@@ -4,7 +4,8 @@ import toast from 'react-hot-toast'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 
-import { Button } from '@/components/ui/Button'
+import { Button, Input } from '@/components/ui'
+import { appConfig } from '@/constants/appConfig'
 import { useAuth } from '@/hooks/useAuth'
 import { authService } from '@/services/appwrite/auth'
 import { getAuthErrorMessage, getPostLoginRoute } from '@/features/auth/utils/authMessages'
@@ -18,7 +19,7 @@ const loginSchema = z.object({
 export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { logout, refreshSession } = useAuth()
+  const { refreshSession } = useAuth()
 
   const {
     register,
@@ -41,10 +42,9 @@ export function LoginPage() {
         throw new Error('Unable to restore your session after login.')
       }
 
-      if (!session.user.emailVerification) {
-        await logout()
+      if (appConfig.enableEmailVerification && !session.user.emailVerification) {
         toast.error('Please verify your email first. Check your inbox and click the verification link.')
-        navigate('/auth/login', { replace: true })
+        navigate('/auth/verify', { replace: true })
         return
       }
 
@@ -61,32 +61,26 @@ export function LoginPage() {
   return (
     <AuthCard title="Login" subtitle="Access your tenant or landlord account.">
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
-        <label className="block text-sm font-medium text-slate-700">
-          Email
-          <input
-            autoComplete="email"
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-700"
-            placeholder="you@example.com"
-            type="email"
-            {...register('email')}
-          />
-          {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>}
-        </label>
+        <Input
+          autoComplete="email"
+          error={errors.email?.message}
+          label="Email"
+          placeholder="you@example.com"
+          type="email"
+          {...register('email')}
+        />
 
-        <label className="block text-sm font-medium text-slate-700">
-          Password
-          <input
-            autoComplete="current-password"
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-700"
-            placeholder="Your password"
-            type="password"
-            {...register('password')}
-          />
-          {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>}
-        </label>
+        <Input
+          autoComplete="current-password"
+          error={errors.password?.message}
+          label="Password"
+          placeholder="Your password"
+          type="password"
+          {...register('password')}
+        />
 
-        <Button className="w-full" disabled={isSubmitting} type="submit">
-          {isSubmitting ? 'Signing in...' : 'Login'}
+        <Button className="w-full" loading={isSubmitting} loadingText="Signing in..." type="submit">
+          Login
         </Button>
       </form>
 

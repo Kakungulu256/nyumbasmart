@@ -10,6 +10,8 @@ import { VerifyEmailPage } from '@/features/auth/pages/VerifyEmailPage'
 import { LandlordDashboardPage } from '@/features/dashboard/landlord/pages/LandlordDashboardPage'
 import { TenantDashboardPage } from '@/features/dashboard/tenant/pages/TenantDashboardPage'
 import { ListingDetailPage } from '@/features/listings/pages/ListingDetailPage'
+import { ListingEditorPage } from '@/features/listings/pages/ListingEditorPage'
+import { LandlordListingsPage } from '@/features/listings/pages/LandlordListingsPage'
 import { ListingsPage } from '@/features/listings/pages/ListingsPage'
 import { MessagingPage } from '@/features/messaging/pages/MessagingPage'
 import { PaymentsPage } from '@/features/payments/pages/PaymentsPage'
@@ -40,15 +42,39 @@ export function AppRouter() {
         <Route
           path="/dashboard/landlord"
           element={
-            <ProtectedRoute requireVerified>
+            <ProtectedRoute requireVerified allowedRoles={['landlord']}>
               <LandlordDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/landlord/listings"
+          element={
+            <ProtectedRoute requireVerified allowedRoles={['landlord']}>
+              <LandlordListingsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/landlord/listings/new"
+          element={
+            <ProtectedRoute requireVerified allowedRoles={['landlord']}>
+              <ListingEditorPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/landlord/listings/:listingId/edit"
+          element={
+            <ProtectedRoute requireVerified allowedRoles={['landlord']}>
+              <ListingEditorPage />
             </ProtectedRoute>
           }
         />
         <Route
           path="/dashboard/tenant"
           element={
-            <ProtectedRoute requireVerified>
+            <ProtectedRoute requireVerified allowedRoles={['tenant']}>
               <TenantDashboardPage />
             </ProtectedRoute>
           }
@@ -56,7 +82,7 @@ export function AppRouter() {
         <Route
           path="/messages"
           element={
-            <ProtectedRoute requireVerified>
+            <ProtectedRoute requireVerified allowedRoles={['landlord', 'tenant']}>
               <MessagingPage />
             </ProtectedRoute>
           }
@@ -64,7 +90,7 @@ export function AppRouter() {
         <Route
           path="/payments"
           element={
-            <ProtectedRoute requireVerified>
+            <ProtectedRoute requireVerified allowedRoles={['tenant']}>
               <PaymentsPage />
             </ProtectedRoute>
           }

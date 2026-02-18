@@ -7,7 +7,7 @@ import { z } from 'zod'
 import { Button } from '@/components/ui/Button'
 import { supportedCountries } from '@/constants/countries'
 import { AuthCard } from '@/features/auth/components/AuthCard'
-import { getAuthErrorMessage } from '@/features/auth/utils/authMessages'
+import { getAuthErrorMessage, getPostLoginRoute } from '@/features/auth/utils/authMessages'
 import { useAuth } from '@/hooks/useAuth'
 import { authService } from '@/services/appwrite/auth'
 
@@ -29,7 +29,7 @@ const registerSchema = z
 
 export function RegisterPage() {
   const navigate = useNavigate()
-  const { createProfile, logout } = useAuth()
+  const { createProfile, refreshSession } = useAuth()
 
   const {
     register,
@@ -70,14 +70,10 @@ export function RegisterPage() {
         country: values.country,
       })
 
-      await authService.requestEmailVerification({
-        redirectUrl: `${window.location.origin}/auth/verify`,
-      })
+      await refreshSession()
 
-      await logout()
-
-      toast.success('Account created. Check your email to verify your account, then login.')
-      navigate('/auth/login', { replace: true })
+      toast.success('Account created successfully.')
+      navigate(getPostLoginRoute(values.role), { replace: true })
     } catch (error) {
       toast.error(getAuthErrorMessage(error, 'Unable to create your account.'))
     }

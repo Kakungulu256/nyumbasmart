@@ -1,5 +1,6 @@
 import { Account, ID, OAuthProvider } from 'appwrite'
 
+import { appConfig } from '@/constants/appConfig'
 import { ensureAppwriteConfigured, appwriteClient } from '@/services/appwrite/client'
 
 export const account = new Account(appwriteClient)
@@ -59,6 +60,10 @@ export const authService = {
 
   requestEmailVerification: async ({ redirectUrl }) => {
     ensureAppwriteConfigured()
+    if (!appConfig.enableEmailVerification) {
+      return { $id: 'email-verification-disabled', userId: null, secret: null, expire: null }
+    }
+
     try {
       return await account.createVerification({ url: redirectUrl })
     } catch (error) {
@@ -76,6 +81,10 @@ export const authService = {
 
   confirmEmailVerification: async ({ userId, secret }) => {
     ensureAppwriteConfigured()
+    if (!appConfig.enableEmailVerification) {
+      return { $id: 'email-verification-disabled', userId, secret, expire: null }
+    }
+
     try {
       return await account.updateVerification({ userId, secret })
     } catch (error) {

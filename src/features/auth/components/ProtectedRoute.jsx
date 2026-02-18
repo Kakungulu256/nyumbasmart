@@ -1,5 +1,7 @@
-﻿import { Navigate, useLocation } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 
+import { appConfig } from '@/constants/appConfig'
+import { getPostLoginRoute } from '@/features/auth/utils/authMessages'
 import { useAuth } from '@/hooks/useAuth'
 
 function AuthLoading() {
@@ -10,9 +12,9 @@ function AuthLoading() {
   )
 }
 
-export function ProtectedRoute({ children, requireVerified = false }) {
+export function ProtectedRoute({ children, requireVerified = false, allowedRoles = [] }) {
   const location = useLocation()
-  const { authStatus, isAuthenticated, isEmailVerified } = useAuth()
+  const { authStatus, isAuthenticated, isEmailVerified, role } = useAuth()
 
   if (authStatus === 'loading') {
     return <AuthLoading />
@@ -22,8 +24,14 @@ export function ProtectedRoute({ children, requireVerified = false }) {
     return <Navigate to="/auth/login" replace state={{ from: location.pathname }} />
   }
 
-  if (requireVerified && !isEmailVerified) {
+  if (requireVerified && appConfig.enableEmailVerification && !isEmailVerified) {
     return <Navigate to="/auth/verify" replace />
+  }
+
+  if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
+    const fallback = getPostLoginRoute(role)
+    const destination = fallback === location.pathname ? '/listings' : fallback
+    return <Navigate to={destination} replace />
   }
 
   return children
