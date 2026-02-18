@@ -43,9 +43,19 @@ export function AppLayout() {
                   Manage Listings
                 </NavLink>
               )}
+              {role === 'landlord' && (
+                <NavLink className={linkClass} to="/dashboard/landlord/applications">
+                  Applications
+                </NavLink>
+              )}
               {role === 'tenant' && (
                 <NavLink className={linkClass} to="/dashboard/tenant">
                   Tenant Dashboard
+                </NavLink>
+              )}
+              {role === 'tenant' && (
+                <NavLink className={linkClass} to="/dashboard/tenant/applications">
+                  My Applications
                 </NavLink>
               )}
               {isAuthenticated && (

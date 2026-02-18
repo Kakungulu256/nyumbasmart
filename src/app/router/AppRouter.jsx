@@ -7,6 +7,8 @@ import { LoginPage } from '@/features/auth/pages/LoginPage'
 import { RegisterPage } from '@/features/auth/pages/RegisterPage'
 import { ResetPasswordPage } from '@/features/auth/pages/ResetPasswordPage'
 import { VerifyEmailPage } from '@/features/auth/pages/VerifyEmailPage'
+import { LandlordApplicationsPage } from '@/features/applications/pages/LandlordApplicationsPage'
+import { TenantApplicationsPage } from '@/features/applications/pages/TenantApplicationsPage'
 import { LandlordDashboardPage } from '@/features/dashboard/landlord/pages/LandlordDashboardPage'
 import { TenantDashboardPage } from '@/features/dashboard/tenant/pages/TenantDashboardPage'
 import { ListingDetailPage } from '@/features/listings/pages/ListingDetailPage'
@@ -72,10 +74,26 @@ export function AppRouter() {
           }
         />
         <Route
+          path="/dashboard/landlord/applications"
+          element={
+            <ProtectedRoute requireVerified allowedRoles={['landlord']}>
+              <LandlordApplicationsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/dashboard/tenant"
           element={
             <ProtectedRoute requireVerified allowedRoles={['tenant']}>
               <TenantDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/tenant/applications"
+          element={
+            <ProtectedRoute requireVerified allowedRoles={['tenant']}>
+              <TenantApplicationsPage />
             </ProtectedRoute>
           }
         />
