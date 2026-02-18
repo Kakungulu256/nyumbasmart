@@ -1,3 +1,3 @@
 import { appwriteIds } from '@/constants/appwriteIds'
 
-export const collections = appwriteIds.collections
+export const functionIds = appwriteIds.functions
