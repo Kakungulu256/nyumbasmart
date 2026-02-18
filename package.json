@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "appwrite:provision": "node --env-file-if-exists=.env scripts/provision-appwrite.mjs",
+    "appwrite:provision:dry": "node --env-file-if-exists=.env scripts/provision-appwrite.mjs --dry-run",
+    "appwrite:permissions": "node --env-file-if-exists=.env scripts/apply-permissions.mjs",
+    "appwrite:permissions:strict": "node --env-file-if-exists=.env scripts/apply-permissions.mjs --mode=strict"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -15,6 +19,7 @@
     "appwrite": "^22.3.1",
     "date-fns": "^4.1.0",
     "i18next": "^25.8.10",
+    "node-appwrite": "^22.1.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-dropzone": "^15.0.0",

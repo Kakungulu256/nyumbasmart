@@ -4,6 +4,18 @@ import { ensureAppwriteConfigured, appwriteClient } from '@/services/appwrite/cl
 
 export const account = new Account(appwriteClient)
 
+function isNotFoundError(error) {
+  return Number(error?.code) === 404
+}
+
+function buildEndpoint(path) {
+  return `${appwriteClient.config.endpoint.replace(/\/+$/, '')}${path}`
+}
+
+async function callLegacyVerificationEndpoint({ method, path, payload }) {
+  return appwriteClient.call(method, new URL(buildEndpoint(path)), { 'content-type': 'application/json' }, payload)
+}
+
 export const authService = {
   registerWithEmail: async ({ email, password, name }) => {
     ensureAppwriteConfigured()
@@ -47,11 +59,35 @@ export const authService = {
 
   requestEmailVerification: async ({ redirectUrl }) => {
     ensureAppwriteConfigured()
-    return account.createVerification(redirectUrl)
+    try {
+      return await account.createVerification({ url: redirectUrl })
+    } catch (error) {
+      if (!isNotFoundError(error)) {
+        throw error
+      }
+
+      return callLegacyVerificationEndpoint({
+        method: 'POST',
+        path: '/account/verification',
+        payload: { url: redirectUrl },
+      })
+    }
   },
 
   confirmEmailVerification: async ({ userId, secret }) => {
     ensureAppwriteConfigured()
-    return account.updateVerification(userId, secret)
+    try {
+      return await account.updateVerification({ userId, secret })
+    } catch (error) {
+      if (!isNotFoundError(error)) {
+        throw error
+      }
+
+      return callLegacyVerificationEndpoint({
+        method: 'PUT',
+        path: '/account/verification',
+        payload: { userId, secret },
+      })
+    }
   },
 }
