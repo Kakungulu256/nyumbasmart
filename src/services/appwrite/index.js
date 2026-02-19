@@ -1,4 +1,5 @@
 export { account, authService } from '@/services/appwrite/auth'
+export { backendFunctionsService } from '@/services/appwrite/backendFunctions'
 export { appwriteClient, ensureAppwriteConfigured } from '@/services/appwrite/client'
 export { databases, dbService, ID as DatabaseID, Query } from '@/services/appwrite/db'
 export { functions, functionsService } from '@/services/appwrite/functions'

@@ -6,6 +6,11 @@ const DEFAULT_OPTIONS = {
   targetBytes: 1_200_000,
 }
 
+export const LISTING_IMAGE_MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+export const LISTING_IMAGE_MAX_INPUT_BYTES = 15 * 1024 * 1024
+export const LISTING_IMAGE_ALLOWED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+export const LISTING_IMAGE_ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
+
 function loadImage(file) {
   return new Promise((resolve, reject) => {
     const objectUrl = URL.createObjectURL(file)
@@ -60,14 +65,45 @@ function createCompressedFileName(originalName) {
 }
 
 export function isSupportedImage(file) {
-  return Boolean(file?.type?.startsWith('image/'))
+  if (!file || typeof file !== 'object') {
+    return false
+  }
+
+  const fileType = String(file.type || '').toLowerCase()
+  const fileExtension = String(file.name || '')
+    .split('.')
+    .pop()
+    ?.toLowerCase()
+
+  return LISTING_IMAGE_ALLOWED_MIME_TYPES.includes(fileType) && LISTING_IMAGE_ALLOWED_EXTENSIONS.includes(fileExtension)
+}
+
+export function validateImageFile(file) {
+  if (!isSupportedImage(file)) {
+    return 'Only JPG, PNG, and WEBP image files are allowed.'
+  }
+
+  const fileSize = Number(file.size || 0)
+  if (fileSize <= 0) {
+    return 'Selected image is empty.'
+  }
+
+  if (fileSize > LISTING_IMAGE_MAX_INPUT_BYTES) {
+    return 'Image is too large. Maximum raw file size is 15MB.'
+  }
+
+  return ''
 }
 
 export async function compressImageFile(file, options = {}) {
   const config = { ...DEFAULT_OPTIONS, ...options }
 
   if (!isSupportedImage(file)) {
-    return file
+    throw new Error('Unsupported image format.')
+  }
+
+  if (Number(file.size || 0) > LISTING_IMAGE_MAX_INPUT_BYTES) {
+    throw new Error('Image is too large. Maximum raw file size is 15MB.')
   }
 
   const image = await loadImage(file)
@@ -92,11 +128,21 @@ export async function compressImageFile(file, options = {}) {
   }
 
   if (bestBlob.size >= file.size) {
+    if (file.size > LISTING_IMAGE_MAX_UPLOAD_BYTES) {
+      throw new Error('Image is too large. Keep each upload below 5MB.')
+    }
+
     return file
   }
 
-  return new File([bestBlob], createCompressedFileName(file.name), {
+  const compressedFile = new File([bestBlob], createCompressedFileName(file.name), {
     type: 'image/jpeg',
     lastModified: Date.now(),
   })
+
+  if (compressedFile.size > LISTING_IMAGE_MAX_UPLOAD_BYTES) {
+    throw new Error('Compressed image is still too large. Please choose a smaller image.')
+  }
+
+  return compressedFile
 }

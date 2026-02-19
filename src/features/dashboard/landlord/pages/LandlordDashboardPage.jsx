@@ -34,6 +34,10 @@ function safeNumber(value) {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+const metricLabelClassName = 'text-xs font-semibold uppercase tracking-wide text-slate-500'
+const detailRowClassName = 'flex items-center justify-between rounded-lg border border-slate-200/80 bg-slate-50/70 px-3 py-2.5'
+const listingRowClassName = 'flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-slate-50/70 px-3 py-3 transition hover:border-brand-200 hover:bg-brand-50/40'
+
 export function LandlordDashboardPage() {
   const { user } = useAuth()
   const [loading, setLoading] = useState(true)
@@ -175,7 +179,7 @@ export function LandlordDashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[260px] items-center justify-center rounded-2xl border border-slate-200 bg-white">
+      <div className="flex min-h-[260px] items-center justify-center rounded-2xl border border-slate-200 bg-white/80">
         <Spinner size="md" />
       </div>
     )
@@ -183,7 +187,7 @@ export function LandlordDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <header>
+      <header className="rounded-2xl border border-slate-200/80 bg-white/80 p-5 shadow-sm shadow-slate-900/5">
         <h1 className="text-2xl font-bold text-slate-900">Landlord Dashboard</h1>
         <p className="text-sm text-slate-600">My properties, listing status, view engagement, and active tenant activity.</p>
       </header>
@@ -193,7 +197,7 @@ export function LandlordDashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardBody className="space-y-1 py-4">
-            <p className="text-xs uppercase tracking-wide text-slate-500">My Properties</p>
+            <p className={metricLabelClassName}>My Properties</p>
             <p className="text-2xl font-bold text-slate-900">{listings.length}</p>
             <p className="text-xs text-slate-500">Available: {listingStatusCounts.available}</p>
           </CardBody>
@@ -201,7 +205,7 @@ export function LandlordDashboardPage() {
 
         <Card>
           <CardBody className="space-y-1 py-4">
-            <p className="text-xs uppercase tracking-wide text-slate-500">View Counts</p>
+            <p className={metricLabelClassName}>View Counts</p>
             <p className="text-2xl font-bold text-slate-900">{totalViewCount.toLocaleString()}</p>
             <p className="text-xs text-slate-500">Avg per listing: {averageViewCount.toLocaleString()}</p>
             <p className="text-xs text-slate-500">
@@ -212,7 +216,7 @@ export function LandlordDashboardPage() {
 
         <Card>
           <CardBody className="space-y-1 py-4">
-            <p className="text-xs uppercase tracking-wide text-slate-500">Active Tenants</p>
+            <p className={metricLabelClassName}>Active Tenants</p>
             <p className="text-2xl font-bold text-slate-900">{uniqueActiveTenantCount}</p>
             <p className="text-xs text-slate-500">Active leases: {activeLeases.length}</p>
           </CardBody>
@@ -220,7 +224,7 @@ export function LandlordDashboardPage() {
 
         <Card>
           <CardBody className="space-y-1 py-4">
-            <p className="text-xs uppercase tracking-wide text-slate-500">Occupancy</p>
+            <p className={metricLabelClassName}>Occupancy</p>
             <p className="text-2xl font-bold text-slate-900">{occupancyRate}%</p>
             <p className="text-xs text-slate-500">Occupied: {listingStatusCounts.occupied}</p>
           </CardBody>
@@ -239,7 +243,7 @@ export function LandlordDashboardPage() {
           </CardHeader>
           <CardBody className="space-y-3">
             {['draft', 'available', 'occupied', 'suspended'].map((status) => (
-              <div className="flex items-center justify-between" key={status}>
+              <div className={detailRowClassName} key={status}>
                 <Badge variant={statusVariant(status)}>{statusLabel(status)}</Badge>
                 <p className="text-sm font-semibold text-slate-900">{listingStatusCounts[status]}</p>
               </div>
@@ -258,7 +262,7 @@ export function LandlordDashboardPage() {
           </CardHeader>
           <CardBody className="space-y-3">
             {['pending', 'accepted', 'rejected', 'withdrawn'].map((status) => (
-              <div className="flex items-center justify-between" key={status}>
+              <div className={detailRowClassName} key={status}>
                 <Badge variant={status === 'pending' ? 'warning' : status === 'accepted' ? 'success' : status === 'rejected' ? 'danger' : 'neutral'}>
                   {statusLabel(status)}
                 </Badge>
@@ -273,19 +277,19 @@ export function LandlordDashboardPage() {
             <CardTitle>Active Tenant Summary</CardTitle>
           </CardHeader>
           <CardBody className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className={detailRowClassName}>
               <p className="text-sm text-slate-600">Unique active tenants</p>
               <p className="text-sm font-semibold text-slate-900">{uniqueActiveTenantCount}</p>
             </div>
-            <div className="flex items-center justify-between">
+            <div className={detailRowClassName}>
               <p className="text-sm text-slate-600">Active leases</p>
               <p className="text-sm font-semibold text-slate-900">{activeLeases.length}</p>
             </div>
-            <div className="flex items-center justify-between">
+            <div className={detailRowClassName}>
               <p className="text-sm text-slate-600">Accepted applications</p>
               <p className="text-sm font-semibold text-slate-900">{applicationCounts.accepted}</p>
             </div>
-            <div className="flex items-center justify-between">
+            <div className={detailRowClassName}>
               <p className="text-sm text-slate-600">Pending applications</p>
               <p className="text-sm font-semibold text-slate-900">{applicationCounts.pending}</p>
             </div>
@@ -308,7 +312,7 @@ export function LandlordDashboardPage() {
           ) : (
             <div className="space-y-3">
               {sortedListings.slice(0, 8).map((listing) => (
-                <article className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-100 px-3 py-3" key={listing.$id}>
+                <article className={listingRowClassName} key={listing.$id}>
                   <div>
                     <p className="font-semibold text-slate-900">{listing.title}</p>
                     <p className="text-xs text-slate-500">

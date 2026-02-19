@@ -2,6 +2,7 @@ import { Account, ID, OAuthProvider } from 'appwrite'
 
 import { appConfig } from '@/constants/appConfig'
 import { ensureAppwriteConfigured, appwriteClient } from '@/services/appwrite/client'
+import { normalizeAppwriteError } from '@/services/appwrite/errors'
 
 export const account = new Account(appwriteClient)
 
@@ -20,12 +21,20 @@ async function callLegacyVerificationEndpoint({ method, path, payload }) {
 export const authService = {
   registerWithEmail: async ({ email, password, name }) => {
     ensureAppwriteConfigured()
-    return account.create(ID.unique(), email, password, name)
+    try {
+      return await account.create(ID.unique(), email, password, name)
+    } catch (error) {
+      throw normalizeAppwriteError(error, 'Unable to create account.')
+    }
   },
 
   loginWithEmail: async ({ email, password }) => {
     ensureAppwriteConfigured()
-    return account.createEmailPasswordSession(email, password)
+    try {
+      return await account.createEmailPasswordSession(email, password)
+    } catch (error) {
+      throw normalizeAppwriteError(error, 'Unable to log in.')
+    }
   },
 
   startGoogleOAuth: ({ successUrl, failureUrl, scopes = [] }) => {
@@ -35,27 +44,47 @@ export const authService = {
 
   getCurrentUser: async () => {
     ensureAppwriteConfigured()
-    return account.get()
+    try {
+      return await account.get()
+    } catch (error) {
+      throw normalizeAppwriteError(error, 'Unable to load user profile.')
+    }
   },
 
   getCurrentSession: async () => {
     ensureAppwriteConfigured()
-    return account.getSession('current')
+    try {
+      return await account.getSession('current')
+    } catch (error) {
+      throw normalizeAppwriteError(error, 'Unable to load session.')
+    }
   },
 
   logoutCurrentSession: async () => {
     ensureAppwriteConfigured()
-    return account.deleteSession('current')
+    try {
+      return await account.deleteSession('current')
+    } catch (error) {
+      throw normalizeAppwriteError(error, 'Unable to log out.')
+    }
   },
 
   requestPasswordRecovery: async ({ email, redirectUrl }) => {
     ensureAppwriteConfigured()
-    return account.createRecovery(email, redirectUrl)
+    try {
+      return await account.createRecovery(email, redirectUrl)
+    } catch (error) {
+      throw normalizeAppwriteError(error, 'Unable to start password recovery.')
+    }
   },
 
   confirmPasswordRecovery: async ({ userId, secret, password }) => {
     ensureAppwriteConfigured()
-    return account.updateRecovery(userId, secret, password, password)
+    try {
+      return await account.updateRecovery(userId, secret, password, password)
+    } catch (error) {
+      throw normalizeAppwriteError(error, 'Unable to reset password.')
+    }
   },
 
   requestEmailVerification: async ({ redirectUrl }) => {
@@ -68,14 +97,18 @@ export const authService = {
       return await account.createVerification({ url: redirectUrl })
     } catch (error) {
       if (!isNotFoundError(error)) {
-        throw error
+        throw normalizeAppwriteError(error, 'Unable to request email verification.')
       }
 
-      return callLegacyVerificationEndpoint({
-        method: 'POST',
-        path: '/account/verification',
-        payload: { url: redirectUrl },
-      })
+      try {
+        return await callLegacyVerificationEndpoint({
+          method: 'POST',
+          path: '/account/verification',
+          payload: { url: redirectUrl },
+        })
+      } catch (legacyError) {
+        throw normalizeAppwriteError(legacyError, 'Unable to request email verification.')
+      }
     }
   },
 
@@ -89,14 +122,18 @@ export const authService = {
       return await account.updateVerification({ userId, secret })
     } catch (error) {
       if (!isNotFoundError(error)) {
-        throw error
+        throw normalizeAppwriteError(error, 'Unable to verify email.')
       }
 
-      return callLegacyVerificationEndpoint({
-        method: 'PUT',
-        path: '/account/verification',
-        payload: { userId, secret },
-      })
+      try {
+        return await callLegacyVerificationEndpoint({
+          method: 'PUT',
+          path: '/account/verification',
+          payload: { userId, secret },
+        })
+      } catch (legacyError) {
+        throw normalizeAppwriteError(legacyError, 'Unable to verify email.')
+      }
     }
   },
 }

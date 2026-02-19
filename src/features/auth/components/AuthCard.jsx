@@ -2,7 +2,7 @@ import { Card, CardBody } from '@/components/ui/Card'
 
 export function AuthCard({ title, subtitle, children }) {
   return (
-    <Card className="mx-auto w-full max-w-lg">
+    <Card className="mx-auto w-full max-w-lg border-slate-200/90 bg-white/90 shadow-md shadow-slate-900/10">
       <CardBody className="p-6 sm:p-8">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-brand-700">NyumbaSmart</p>
         <h1 className="text-2xl font-bold text-slate-900">{title}</h1>

@@ -4,7 +4,14 @@ import toast from 'react-hot-toast'
 import { Button, Spinner } from '@/components/ui'
 import { buckets } from '@/constants/buckets'
 import { storageService } from '@/services/appwrite/storage'
-import { compressImageFile, isSupportedImage } from '@/features/listings/utils/listingMedia'
+import { backendFunctionsService } from '@/services/appwrite/backendFunctions'
+import {
+  compressImageFile,
+  LISTING_IMAGE_ALLOWED_EXTENSIONS,
+  LISTING_IMAGE_ALLOWED_MIME_TYPES,
+  LISTING_IMAGE_MAX_UPLOAD_BYTES,
+  validateImageFile,
+} from '@/features/listings/utils/listingMedia'
 
 const MAX_IMAGES = 12
 
@@ -60,11 +67,12 @@ export function ListingMediaManager({ imageFileIds = [], onChange, disabled = fa
     }
 
     const validFiles = selectedFiles.filter((file) => {
-      if (isSupportedImage(file)) {
+      const validationError = validateImageFile(file)
+      if (!validationError) {
         return true
       }
 
-      toast.error(`"${file.name}" is not a supported image.`)
+      toast.error(`"${file.name}" failed validation: ${validationError}`)
       return false
     })
 
@@ -97,10 +105,25 @@ export function ListingMediaManager({ imageFileIds = [], onChange, disabled = fa
         const uploadedFile = await storageService.uploadFile({
           bucketId: buckets.listingImages,
           file: compressedFile,
+          maxBytes: LISTING_IMAGE_MAX_UPLOAD_BYTES,
+          allowedMimeTypes: LISTING_IMAGE_ALLOWED_MIME_TYPES,
+          allowedExtensions: LISTING_IMAGE_ALLOWED_EXTENSIONS,
         })
 
         const uploadedFileId = uploadedFile.$id
         const uploadedPreviewUrl = toPreviewUrl(uploadedFileId)
+
+        void backendFunctionsService
+          .scanUploadedFile({
+            bucketId: buckets.listingImages,
+            fileId: uploadedFileId,
+            fileName: compressedFile.name,
+            mimeType: compressedFile.type,
+            entityType: 'listing_image',
+          })
+          .catch(() => {
+            // Non-blocking function execution failure.
+          })
 
         updateAndEmit((previousItems) =>
           previousItems.map((item) =>
@@ -171,7 +194,7 @@ export function ListingMediaManager({ imageFileIds = [], onChange, disabled = fa
         <label className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
           Upload images
           <input
-            accept="image/*"
+            accept={LISTING_IMAGE_ALLOWED_MIME_TYPES.join(',')}
             className="sr-only"
             disabled={disabled || items.length >= MAX_IMAGES}
             multiple

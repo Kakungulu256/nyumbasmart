@@ -3,7 +3,7 @@ import { Spinner } from '@/components/ui/Spinner'
 
 const variantClassMap = {
   primary: 'bg-brand-700 text-white hover:bg-brand-900',
-  secondary: 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
+  secondary: 'border border-slate-300 bg-white text-slate-700 hover:border-brand-300 hover:bg-brand-50/70',
   ghost: 'bg-transparent text-slate-700 hover:bg-slate-100',
   danger: 'bg-red-600 text-white hover:bg-red-700',
 }
@@ -31,7 +31,7 @@ export function Button({
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition disabled:cursor-not-allowed disabled:opacity-60',
+        'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60',
         variantClass,
         sizeClass,
         className,

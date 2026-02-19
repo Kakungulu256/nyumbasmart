@@ -2,12 +2,18 @@ import { Permission, Role } from 'appwrite'
 
 import { collections } from '@/constants/collections'
 import { dbService, Query } from '@/services/appwrite/db'
+import { ensureFiniteNumber, ensureSafeId, sanitizeCode, sanitizeStringArray, sanitizeTextInput } from '@/utils/security'
 
-function buildListingPermissions({ landlordId, isPublished }) {
+const VALID_LISTING_STATUSES = ['available', 'occupied', 'draft', 'suspended']
+const VALID_PROPERTY_TYPES = ['apartment', 'house', 'room', 'studio', 'commercial']
+const VALID_PAYMENT_FREQUENCIES = ['monthly', 'quarterly', 'annually']
+
+export function buildListingPermissions({ landlordId, isPublished }) {
+  const safeLandlordId = ensureSafeId(landlordId, 'Landlord ID')
   const permissions = [
-    Permission.read(Role.user(landlordId)),
-    Permission.update(Role.user(landlordId)),
-    Permission.delete(Role.user(landlordId)),
+    Permission.read(Role.user(safeLandlordId)),
+    Permission.update(Role.user(safeLandlordId)),
+    Permission.delete(Role.user(safeLandlordId)),
   ]
 
   if (isPublished) {
@@ -38,29 +44,67 @@ function toIsoStringOrNull(value) {
 }
 
 function normalizeListingPayload(values, status) {
+  const normalizedStatus = String(status || 'draft').trim()
+  if (!VALID_LISTING_STATUSES.includes(normalizedStatus)) {
+    throw new Error('Listing status is invalid.')
+  }
+
+  const propertyType = String(values.propertyType || '').trim()
+  if (!VALID_PROPERTY_TYPES.includes(propertyType)) {
+    throw new Error('Property type is invalid.')
+  }
+
+  const paymentFrequency = String(values.paymentFrequency || '').trim()
+  if (!VALID_PAYMENT_FREQUENCIES.includes(paymentFrequency)) {
+    throw new Error('Payment frequency is invalid.')
+  }
+
   const imageFileIds = Array.isArray(values.imageFileIds)
     ? values.imageFileIds.map((value) => String(value || '').trim()).filter(Boolean)
     : formatArrayInput(values.imageFileIdsText)
 
+  const title = sanitizeTextInput(values.title, { maxLength: 140 })
+  const description = sanitizeTextInput(values.description, { maxLength: 2000, allowMultiline: true })
+  const address = sanitizeTextInput(values.address, { maxLength: 240 })
+  const city = sanitizeTextInput(values.city, { maxLength: 80 })
+
+  if (!title) {
+    throw new Error('Listing title is required.')
+  }
+
+  if (!description) {
+    throw new Error('Listing description is required.')
+  }
+
+  if (!address) {
+    throw new Error('Listing address is required.')
+  }
+
+  if (!city) {
+    throw new Error('Listing city is required.')
+  }
+
   return {
-    landlordId: values.landlordId,
-    title: values.title.trim(),
-    description: values.description.trim(),
-    propertyType: values.propertyType,
-    rentAmount: Number(values.rentAmount),
-    currency: values.currency.trim().toUpperCase(),
-    paymentFrequency: values.paymentFrequency,
-    bedrooms: Number(values.bedrooms),
-    bathrooms: Number(values.bathrooms),
-    amenities: formatArrayInput(values.amenitiesText),
-    imageFileIds,
-    latitude: Number(values.latitude),
-    longitude: Number(values.longitude),
-    address: values.address.trim(),
-    neighborhood: values.neighborhood.trim(),
-    city: values.city.trim(),
-    country: values.country.trim().toUpperCase(),
-    status,
+    landlordId: ensureSafeId(values.landlordId, 'Landlord ID'),
+    title,
+    description,
+    propertyType,
+    rentAmount: ensureFiniteNumber(values.rentAmount, { label: 'Rent amount', integer: true, min: 0 }),
+    currency: sanitizeCode(values.currency, { label: 'Currency code', exactLength: 3 }),
+    paymentFrequency,
+    bedrooms: ensureFiniteNumber(values.bedrooms, { label: 'Bedrooms', integer: true, min: 0, max: 20 }),
+    bathrooms: ensureFiniteNumber(values.bathrooms, { label: 'Bathrooms', integer: true, min: 0, max: 20 }),
+    amenities: sanitizeStringArray(formatArrayInput(values.amenitiesText), { maxItems: 30, maxItemLength: 50 }),
+    imageFileIds: sanitizeStringArray(imageFileIds, { maxItems: 12, maxItemLength: 64 }).map((fileId) =>
+      ensureSafeId(fileId, 'Image file ID'),
+    ),
+    latitude: ensureFiniteNumber(values.latitude, { label: 'Latitude', min: -90, max: 90 }),
+    longitude: ensureFiniteNumber(values.longitude, { label: 'Longitude', min: -180, max: 180 }),
+    address,
+    neighborhood: sanitizeTextInput(values.neighborhood, { maxLength: 120 }),
+    city,
+    country: sanitizeCode(values.country, { label: 'Country code', exactLength: 2 }),
+    status: normalizedStatus,
     availableFrom: toIsoStringOrNull(values.availableFrom),
     updatedAt: new Date().toISOString(),
   }
@@ -143,7 +187,7 @@ export const listingsService = {
   listLandlordListings: async ({ landlordId }) => {
     const response = await dbService.listDocuments({
       collectionId: collections.listings,
-      queries: [Query.equal('landlordId', landlordId), Query.orderDesc('$updatedAt'), Query.limit(100)],
+      queries: [Query.equal('landlordId', ensureSafeId(landlordId, 'Landlord ID')), Query.orderDesc('$updatedAt'), Query.limit(100)],
     })
 
     return response.documents
@@ -152,7 +196,7 @@ export const listingsService = {
   getListingById: async ({ listingId }) =>
     dbService.getDocument({
       collectionId: collections.listings,
-      documentId: listingId,
+      documentId: ensureSafeId(listingId, 'Listing ID'),
     }),
 
   createListing: async ({ landlordId, values, status = 'draft' }) => {
@@ -172,7 +216,7 @@ export const listingsService = {
   updateListing: async ({ listingId, landlordId, values, status = 'draft' }) =>
     dbService.updateDocument({
       collectionId: collections.listings,
-      documentId: listingId,
+      documentId: ensureSafeId(listingId, 'Listing ID'),
       data: normalizeListingPayload({ ...values, landlordId }, status),
       permissions: buildListingPermissions({
         landlordId,
@@ -183,7 +227,7 @@ export const listingsService = {
   setListingPublication: async ({ listingId, landlordId, publish }) =>
     dbService.updateDocument({
       collectionId: collections.listings,
-      documentId: listingId,
+      documentId: ensureSafeId(listingId, 'Listing ID'),
       data: {
         status: publish ? 'available' : 'draft',
         updatedAt: new Date().toISOString(),

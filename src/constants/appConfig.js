@@ -15,6 +15,7 @@ export const appConfig = {
   appwriteProjectId: readEnv('VITE_APPWRITE_PROJECT_ID'),
   appwriteDatabaseId: readEnv('VITE_APPWRITE_DATABASE_ID'),
   enableEmailVerification: readEnv('VITE_ENABLE_EMAIL_VERIFICATION', 'false') === 'true',
+  enableAppwriteFunctions: readEnv('VITE_ENABLE_APPWRITE_FUNCTIONS', 'false') === 'true',
 }
 
 const requiredConfig = [

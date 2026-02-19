@@ -1,10 +1,10 @@
-﻿import { zodResolver } from '@hookform/resolvers/zod'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import { Link, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 
-import { Button } from '@/components/ui/Button'
+import { Button, FormField, Input, getFieldInputClassName } from '@/components/ui'
 import { supportedCountries } from '@/constants/countries'
 import { AuthCard } from '@/features/auth/components/AuthCard'
 import { getAuthErrorMessage, getPostLoginRoute } from '@/features/auth/utils/authMessages'
@@ -83,100 +83,39 @@ export function RegisterPage() {
     <AuthCard title="Create account" subtitle="Register as a landlord or tenant.">
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block text-sm font-medium text-slate-700">
-            First name
-            <input
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-700"
-              type="text"
-              {...register('firstName')}
-            />
-            {errors.firstName && <p className="mt-1 text-xs text-red-600">{errors.firstName.message}</p>}
-          </label>
-
-          <label className="block text-sm font-medium text-slate-700">
-            Last name
-            <input
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-700"
-              type="text"
-              {...register('lastName')}
-            />
-            {errors.lastName && <p className="mt-1 text-xs text-red-600">{errors.lastName.message}</p>}
-          </label>
+          <Input error={errors.firstName?.message} label="First name" required type="text" {...register('firstName')} />
+          <Input error={errors.lastName?.message} label="Last name" required type="text" {...register('lastName')} />
         </div>
 
-        <label className="block text-sm font-medium text-slate-700">
-          Email
-          <input
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-700"
-            type="email"
-            {...register('email')}
-          />
-          {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>}
-        </label>
-
-        <label className="block text-sm font-medium text-slate-700">
-          Phone number
-          <input
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-700"
-            type="tel"
-            {...register('phone')}
-          />
-          {errors.phone && <p className="mt-1 text-xs text-red-600">{errors.phone.message}</p>}
-        </label>
+        <Input error={errors.email?.message} label="Email" required type="email" {...register('email')} />
+        <Input error={errors.phone?.message} label="Phone number" required type="tel" {...register('phone')} />
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block text-sm font-medium text-slate-700">
-            Country
-            <select
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-700"
-              {...register('country')}
-            >
+          <FormField error={errors.country?.message} id="country" label="Country" required>
+            <select className={getFieldInputClassName({ hasError: Boolean(errors.country) })} id="country" {...register('country')}>
               {supportedCountries.map((country) => (
                 <option key={country.code} value={country.code}>
                   {country.name}
                 </option>
               ))}
             </select>
-            {errors.country && <p className="mt-1 text-xs text-red-600">{errors.country.message}</p>}
-          </label>
+          </FormField>
 
-          <label className="block text-sm font-medium text-slate-700">
-            Role
-            <select
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-700"
-              {...register('role')}
-            >
+          <FormField error={errors.role?.message} id="role" label="Role" required>
+            <select className={getFieldInputClassName({ hasError: Boolean(errors.role) })} id="role" {...register('role')}>
               <option value="tenant">Tenant</option>
               <option value="landlord">Landlord</option>
             </select>
-            {errors.role && <p className="mt-1 text-xs text-red-600">{errors.role.message}</p>}
-          </label>
+          </FormField>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block text-sm font-medium text-slate-700">
-            Password
-            <input
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-700"
-              type="password"
-              {...register('password')}
-            />
-            {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>}
-          </label>
-
-          <label className="block text-sm font-medium text-slate-700">
-            Confirm password
-            <input
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-700"
-              type="password"
-              {...register('confirmPassword')}
-            />
-            {errors.confirmPassword && <p className="mt-1 text-xs text-red-600">{errors.confirmPassword.message}</p>}
-          </label>
+          <Input error={errors.password?.message} label="Password" required type="password" {...register('password')} />
+          <Input error={errors.confirmPassword?.message} label="Confirm password" required type="password" {...register('confirmPassword')} />
         </div>
 
-        <Button className="w-full" disabled={isSubmitting} type="submit">
-          {isSubmitting ? 'Creating account...' : 'Create account'}
+        <Button className="w-full" loading={isSubmitting} loadingText="Creating account..." type="submit">
+          Create account
         </Button>
       </form>
 

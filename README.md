@@ -1,16 +1,67 @@
-# React + Vite
+# NyumbaSmart
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+NyumbaSmart is a rental management web app built with React + Vite + Appwrite.  
+Current scope includes auth, role-based dashboards, listings, applications, messaging, notifications, and baseline production/security tooling.
 
-Currently, two official plugins are available:
+## Tech Stack
+- React 19 + Vite
+- Appwrite (Auth, Databases, Storage, Realtime)
+- Zustand + React Query
+- Vitest + Testing Library
+- Playwright (smoke E2E)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Prerequisites
+- Node.js 20+
+- npm 10+
+- Appwrite project, database, and API key (for provisioning scripts)
 
-## React Compiler
+## Local Setup
+1. Install dependencies:
+```bash
+npm install
+```
+2. Create local env file:
+```bash
+cp .env.example .env
+```
+3. Fill `.env` values.
+4. Provision Appwrite schema/buckets:
+```bash
+npm run appwrite:provision
+npm run appwrite:permissions
+```
+5. Run the app:
+```bash
+npm run dev
+```
 
-The React Compiler is currently not compatible with SWC. See [this issue](https://github.com/vitejs/vite-plugin-react/issues/428) for tracking the progress.
+## Quality Gates
+- Lint: `npm run lint`
+- Unit + integration tests: `npm run test`
+- Smoke E2E: `npm run test:smoke`
+- Production build: `npm run build`
+- Release verification (full gate): `npm run verify:release`
 
-## Expanding the ESLint configuration
+## Environment Documentation
+- Main template: `.env.example`
+- Production frontend template: `.env.production.example`
+- Detailed variable guide: `docs/ENVIRONMENT.md`
+- Feature activation runbook: `docs/FEATURE_ACTIVATION.md`
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Deployment
+- Deployment guide: `docs/DEPLOYMENT.md`
+- Docker + Nginx artifacts included:
+  - `Dockerfile`
+  - `nginx.conf`
+  - `.dockerignore`
+- GitHub Actions workflows:
+  - `.github/workflows/ci.yml`
+  - `.github/workflows/release-artifact.yml`
+
+## Appwrite Functions Source
+- Function source folders are in `appwrite/functions/`.
+- Manual deployment instructions are in `appwrite/functions/README.md`.
+- Frontend function execution is controlled by `VITE_ENABLE_APPWRITE_FUNCTIONS`.
+
+## Release Checklist
+See `docs/RELEASE_CHECKLIST.md` before shipping.

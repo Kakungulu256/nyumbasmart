@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
+import toast from 'react-hot-toast'
 import { Link } from 'react-router-dom'
 
 import { Badge, Button, Card, CardBody, CardHeader, CardTitle, FormField, Input, Spinner, getFieldInputClassName } from '@/components/ui'
 import { ListingsMapView } from '@/features/listings/components/ListingsMapView'
+import { savedListingsService } from '@/features/listings/services/savedListingsService'
 import { listingsService } from '@/features/listings/services/listingsService'
 import { propertyTypeOptions } from '@/features/listings/utils/listingForm'
 import { calculateDistanceKm, toNumberOrNull } from '@/features/listings/utils/geo'
 import { buckets } from '@/constants/buckets'
+import { useAuth } from '@/hooks/useAuth'
 import { storageService } from '@/services/appwrite/storage'
 import { formatCurrency } from '@/utils/currency'
 
@@ -36,7 +39,7 @@ function imageUrlForListing(listing) {
   return typeof viewUrl === 'string' ? viewUrl : viewUrl.toString()
 }
 
-function ListingCard({ listing }) {
+function ListingCard({ listing, canSave = false, isSaved = false, onToggleSave }) {
   const previewUrl = imageUrlForListing(listing)
   const shortDescription = String(listing.description || '').slice(0, 140)
   const hasDistance = Number.isFinite(listing.distanceKm)
@@ -73,11 +76,19 @@ function ListingCard({ listing }) {
           <p className="text-xs uppercase tracking-wide text-slate-500">{listing.paymentFrequency}</p>
         </div>
 
-        <Link className="block" to={`/listings/${listing.$id}`}>
-          <Button className="w-full" size="sm">
-            View listing
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link className="block flex-1" to={`/listings/${listing.$id}`}>
+            <Button className="w-full" size="sm">
+              View listing
+            </Button>
+          </Link>
+
+          {canSave && (
+            <Button onClick={() => onToggleSave?.(listing.$id)} size="sm" type="button" variant={isSaved ? 'secondary' : 'ghost'}>
+              {isSaved ? 'Saved' : 'Save'}
+            </Button>
+          )}
+        </div>
       </CardBody>
     </Card>
   )
@@ -108,6 +119,7 @@ function mapPermissionTone(permissionState) {
 }
 
 export function ListingsPage() {
+  const { isAuthenticated, role, user } = useAuth()
   const [draftFilters, setDraftFilters] = useState(emptyFilters)
   const [appliedFilters, setAppliedFilters] = useState(emptyFilters)
   const [showMap, setShowMap] = useState(true)
@@ -119,6 +131,20 @@ export function ListingsPage() {
   const [geoPermission, setGeoPermission] = useState('unknown')
   const [userLocation, setUserLocation] = useState(null)
   const [documents, setDocuments] = useState([])
+  const [savedListingIds, setSavedListingIds] = useState([])
+
+  useEffect(() => {
+    if (!isAuthenticated || role !== 'tenant' || !user?.$id) {
+      setSavedListingIds([])
+      return
+    }
+
+    setSavedListingIds(
+      savedListingsService.listSavedListingIds({
+        userId: user.$id,
+      }),
+    )
+  }, [isAuthenticated, role, user?.$id])
 
   useEffect(() => {
     if (!('geolocation' in navigator)) {
@@ -365,6 +391,21 @@ export function ListingsPage() {
     }))
   }
 
+  const toggleSavedListing = (listingId) => {
+    if (!user?.$id || role !== 'tenant') {
+      return
+    }
+
+    const result = savedListingsService.toggleSavedListing({
+      userId: user.$id,
+      listingId,
+    })
+
+    setSavedListingIds(result.listingIds)
+    toast.success(result.saved ? 'Listing saved.' : 'Listing removed from saved.')
+  }
+
+  const canSaveListings = isAuthenticated && role === 'tenant'
   const mapListings = filteredListings.slice(0, 150)
 
   return (
@@ -529,7 +570,13 @@ export function ListingsPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {pageListings.map((listing) => (
-            <ListingCard key={listing.$id} listing={listing} />
+            <ListingCard
+              canSave={canSaveListings}
+              isSaved={savedListingIds.includes(listing.$id)}
+              key={listing.$id}
+              listing={listing}
+              onToggleSave={toggleSavedListing}
+            />
           ))}
         </div>
       )}

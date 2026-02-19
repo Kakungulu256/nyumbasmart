@@ -8,7 +8,6 @@ import { databaseId } from '@/constants/database'
 import { useAuth } from '@/hooks/useAuth'
 import { dbService, Query } from '@/services/appwrite/db'
 import { realtimeService } from '@/services/appwrite/realtime'
-import { useAppStore } from '@/store/appStore'
 import { buildConversationId, messagingService } from '@/features/messaging/services/messagingService'
 
 function fullName(profile) {
@@ -92,7 +91,6 @@ function upsertConversationPreview(conversations, message, currentUserId, select
 export function MessagingPage() {
   const [searchParams] = useSearchParams()
   const { user } = useAuth()
-  const setNotificationCount = useAppStore((state) => state.setNotificationCount)
 
   const [loadingConversations, setLoadingConversations] = useState(true)
   const [loadingMessages, setLoadingMessages] = useState(false)
@@ -173,11 +171,6 @@ export function MessagingPage() {
   useEffect(() => {
     loadConversations()
   }, [loadConversations])
-
-  useEffect(() => {
-    const totalUnread = conversations.reduce((sum, conversation) => sum + (conversation.unreadCount || 0), 0)
-    setNotificationCount(totalUnread)
-  }, [conversations, setNotificationCount])
 
   const selectedConversation = conversations.find((item) => item.conversationId === selectedConversationId) || null
 
@@ -413,7 +406,7 @@ export function MessagingPage() {
 
   return (
     <div className="space-y-4">
-      <header>
+      <header className="rounded-2xl border border-slate-200/80 bg-white/80 p-5 shadow-sm shadow-slate-900/5">
         <h1 className="text-2xl font-bold text-slate-900">Messaging</h1>
         <p className="text-sm text-slate-600">Track conversations in realtime and respond to listing inquiries.</p>
       </header>
@@ -433,7 +426,7 @@ export function MessagingPage() {
             ) : conversations.length === 0 ? (
               <div className="px-5 py-8 text-sm text-slate-600">No conversations yet. Contact a landlord from a listing detail page.</div>
             ) : (
-              <div className="divide-y divide-slate-100">
+              <div className="space-y-2 p-3">
                 {conversations.map((conversation) => {
                   const participantProfile = profilesByUserId[conversation.participantId]
                   const listing = listingsById[conversation.listingId]
@@ -442,7 +435,11 @@ export function MessagingPage() {
 
                   return (
                     <button
-                      className={`w-full px-4 py-3 text-left ${isSelected ? 'bg-brand-50' : 'hover:bg-slate-50'}`}
+                      className={`w-full rounded-xl border px-4 py-3 text-left transition ${
+                        isSelected
+                          ? 'border-brand-200 bg-brand-50/80 shadow-sm'
+                          : 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50'
+                      }`}
                       key={conversation.conversationId}
                       onClick={() => setSelectedConversationId(conversation.conversationId)}
                       type="button"
@@ -478,7 +475,7 @@ export function MessagingPage() {
                 )}
               </CardHeader>
               <CardBody className="flex h-[calc(72vh-72px)] flex-col gap-3">
-                <div className="flex-1 space-y-3 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50 p-3">
+                <div className="flex-1 space-y-3 overflow-y-auto rounded-xl border border-slate-200/80 bg-slate-50/70 p-3">
                   {loadingMessages ? (
                     <div className="flex h-full items-center justify-center">
                       <Spinner size="md" />
@@ -491,14 +488,14 @@ export function MessagingPage() {
                       return (
                         <div className={`flex ${isMine ? 'justify-end' : 'justify-start'}`} key={message.$id}>
                           <article
-                            className={`max-w-[80%] rounded-xl px-3 py-2 text-sm ${
-                              isMine ? 'bg-brand-700 text-white' : 'border border-slate-200 bg-white text-slate-800'
+                            className={`max-w-[80%] rounded-2xl px-3 py-2.5 text-sm shadow-sm ${
+                              isMine ? 'bg-brand-700 text-white shadow-brand-900/10' : 'border border-slate-200 bg-white text-slate-800'
                             }`}
                           >
                             <p className="whitespace-pre-wrap break-words">{message.body}</p>
                             <p className={`mt-1 text-[11px] ${isMine ? 'text-white/80' : 'text-slate-400'}`}>
                               {formatTimestamp(normalizeMessageTimestamp(message))}
-                              {isMine && ` • ${message.read ? 'Read' : 'Sent'}`}
+                              {isMine && ` - ${message.read ? 'Read' : 'Sent'}`}
                             </p>
                           </article>
                         </div>
@@ -509,7 +506,7 @@ export function MessagingPage() {
 
                 <form className="space-y-2" onSubmit={onSendMessage}>
                   <textarea
-                    className="min-h-24 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-brand-700 focus:ring-2 focus:ring-brand-100"
+                    className="min-h-24 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-700 focus:ring-2 focus:ring-brand-100/80 focus:ring-offset-1"
                     disabled={sending}
                     onChange={(event) => setDraftBody(event.target.value)}
                     placeholder="Type your message..."

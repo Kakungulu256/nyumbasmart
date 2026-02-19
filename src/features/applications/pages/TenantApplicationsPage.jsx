@@ -41,6 +41,9 @@ function formatDate(value) {
   return parsed.toLocaleString()
 }
 
+const metricLabelClassName = 'text-xs font-semibold uppercase tracking-wide text-slate-500'
+const metaRowClassName = 'text-sm text-slate-600'
+
 export function TenantApplicationsPage() {
   const { user } = useAuth()
   const [loading, setLoading] = useState(true)
@@ -128,7 +131,7 @@ export function TenantApplicationsPage() {
 
   return (
     <div className="space-y-6">
-      <header>
+      <header className="rounded-2xl border border-slate-200/80 bg-white/80 p-5 shadow-sm shadow-slate-900/5">
         <h1 className="text-2xl font-bold text-slate-900">My Applications</h1>
         <p className="text-sm text-slate-600">Track application status, withdraw pending ones, and monitor decisions.</p>
       </header>
@@ -136,32 +139,32 @@ export function TenantApplicationsPage() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardBody className="space-y-1 py-4">
-            <p className="text-xs uppercase tracking-wide text-slate-500">Pending</p>
+            <p className={metricLabelClassName}>Pending</p>
             <p className="text-2xl font-bold text-amber-700">{counts.pending}</p>
           </CardBody>
         </Card>
         <Card>
           <CardBody className="space-y-1 py-4">
-            <p className="text-xs uppercase tracking-wide text-slate-500">Accepted</p>
+            <p className={metricLabelClassName}>Accepted</p>
             <p className="text-2xl font-bold text-brand-700">{counts.accepted}</p>
           </CardBody>
         </Card>
         <Card>
           <CardBody className="space-y-1 py-4">
-            <p className="text-xs uppercase tracking-wide text-slate-500">Rejected</p>
+            <p className={metricLabelClassName}>Rejected</p>
             <p className="text-2xl font-bold text-red-700">{counts.rejected}</p>
           </CardBody>
         </Card>
         <Card>
           <CardBody className="space-y-1 py-4">
-            <p className="text-xs uppercase tracking-wide text-slate-500">Withdrawn</p>
+            <p className={metricLabelClassName}>Withdrawn</p>
             <p className="text-2xl font-bold text-slate-700">{counts.withdrawn}</p>
           </CardBody>
         </Card>
       </div>
 
       {loading ? (
-        <div className="flex min-h-[220px] items-center justify-center rounded-2xl border border-slate-200 bg-white">
+        <div className="flex min-h-[220px] items-center justify-center rounded-2xl border border-slate-200 bg-white/80">
           <Spinner size="md" />
         </div>
       ) : error ? (
@@ -181,7 +184,7 @@ export function TenantApplicationsPage() {
             const listing = listingsById[application.listingId]
 
             return (
-              <Card key={application.$id}>
+              <Card className="transition hover:border-brand-200/70" key={application.$id}>
                 <CardHeader className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <CardTitle>{listing?.title || 'Listing unavailable'}</CardTitle>
@@ -193,8 +196,8 @@ export function TenantApplicationsPage() {
                 </CardHeader>
                 <CardBody className="space-y-3">
                   <div className="grid gap-2 sm:grid-cols-2">
-                    <p className="text-sm text-slate-600">Submitted: {formatDate(application.createdAt || application.$createdAt)}</p>
-                    <p className="text-sm text-slate-600">Preferred move-in: {formatDate(application.moveInDate)}</p>
+                    <p className={metaRowClassName}>Submitted: {formatDate(application.createdAt || application.$createdAt)}</p>
+                    <p className={metaRowClassName}>Preferred move-in: {formatDate(application.moveInDate)}</p>
                   </div>
 
                   <div className="flex flex-wrap gap-2">

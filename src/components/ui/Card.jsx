@@ -1,7 +1,7 @@
 import { cn } from '@/components/ui/cn'
 
 export function Card({ children, className = '' }) {
-  return <section className={cn('rounded-2xl border border-slate-200 bg-white shadow-sm', className)}>{children}</section>
+  return <section className={cn('rounded-2xl border border-slate-200/90 bg-white shadow-sm shadow-slate-900/5', className)}>{children}</section>
 }
 
 export function CardHeader({ children, className = '' }) {

@@ -238,7 +238,7 @@ export function ListingEditorPage() {
 
   if (loadingListing) {
     return (
-      <div className="flex min-h-[240px] items-center justify-center rounded-2xl border border-slate-200 bg-white">
+      <div className="flex min-h-[240px] items-center justify-center rounded-2xl border border-slate-200 bg-white/80">
         <Spinner size="md" />
       </div>
     )
@@ -246,7 +246,7 @@ export function ListingEditorPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white/80 p-5 shadow-sm shadow-slate-900/5">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">{pageTitle}</h1>
           <p className="text-sm text-slate-600">{pageSubtitle}</p>
@@ -269,7 +269,7 @@ export function ListingEditorPage() {
           <p className="mt-1 text-sm text-slate-600">{currentStep.description}</p>
           <div className="mt-4 flex flex-wrap gap-2">
             {listingStepConfig.map((step, index) => (
-              <div className="flex items-center gap-2" key={step.id}>
+              <div className="flex items-center gap-2 rounded-lg border border-slate-200/80 bg-slate-50/70 px-2.5 py-1.5" key={step.id}>
                 <StepBadge active={index === stepIndex} complete={index < stepIndex} index={index} />
                 <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{step.title}</span>
               </div>

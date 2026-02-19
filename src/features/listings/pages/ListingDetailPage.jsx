@@ -8,6 +8,7 @@ import { buckets } from '@/constants/buckets'
 import { collections } from '@/constants/collections'
 import { useAuth } from '@/hooks/useAuth'
 import { listingsService } from '@/features/listings/services/listingsService'
+import { savedListingsService } from '@/features/listings/services/savedListingsService'
 import { dbService, Query } from '@/services/appwrite/db'
 import { storageService } from '@/services/appwrite/storage'
 import { formatCurrency } from '@/utils/currency'
@@ -66,6 +67,7 @@ export function ListingDetailPage() {
   const [landlordProfile, setLandlordProfile] = useState(null)
   const [activeImageIndex, setActiveImageIndex] = useState(0)
   const [submittingApplication, setSubmittingApplication] = useState(false)
+  const [isSavedListing, setIsSavedListing] = useState(false)
 
   useEffect(() => {
     if (!listingId) {
@@ -131,6 +133,21 @@ export function ListingDetailPage() {
   const landlordName = `${landlordProfile?.firstName || ''} ${landlordProfile?.lastName || ''}`.trim() || 'Landlord'
   const landlordAvatar = fileViewUrl(buckets.avatars, landlordProfile?.avatarFileId)
   const landlordLocation = [landlordProfile?.city, landlordProfile?.country].filter(Boolean).join(', ')
+  const canSaveListing = !isOwner && role !== 'landlord'
+
+  useEffect(() => {
+    if (!listing?.$id || !user?.$id || role !== 'tenant') {
+      setIsSavedListing(false)
+      return
+    }
+
+    setIsSavedListing(
+      savedListingsService.isListingSaved({
+        userId: user.$id,
+        listingId: listing.$id,
+      }),
+    )
+  }, [listing?.$id, role, user?.$id])
 
   const handleApplyClick = async () => {
     if (!listing) {
@@ -190,6 +207,32 @@ export function ListingDetailPage() {
     }
 
     navigate(`/messages?listingId=${listing.$id}&participant=${listing.landlordId}`)
+  }
+
+  const handleSaveListingClick = () => {
+    if (!listing) {
+      return
+    }
+
+    if (!isAuthenticated) {
+      navigate('/auth/login', {
+        state: { from: `/listings/${listing.$id}` },
+      })
+      return
+    }
+
+    if (!canSaveListing || role !== 'tenant' || !user?.$id) {
+      toast.error('Only tenant accounts can save listings.')
+      return
+    }
+
+    const result = savedListingsService.toggleSavedListing({
+      userId: user.$id,
+      listingId: listing.$id,
+    })
+
+    setIsSavedListing(result.saved)
+    toast.success(result.saved ? 'Listing saved.' : 'Listing removed from saved.')
   }
 
   if (loading) {
@@ -315,6 +358,12 @@ export function ListingDetailPage() {
               <Button className="w-full" onClick={handleContactClick} type="button" variant="secondary">
                 {isAuthenticated ? 'Contact landlord' : 'Login to contact'}
               </Button>
+
+              {canSaveListing && (
+                <Button className="w-full" onClick={handleSaveListingClick} type="button" variant={isSavedListing ? 'secondary' : 'ghost'}>
+                  {!isAuthenticated ? 'Login to save' : isSavedListing ? 'Saved listing' : 'Save listing'}
+                </Button>
+              )}
             </CardBody>
           </Card>
 

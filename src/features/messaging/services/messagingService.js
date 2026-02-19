@@ -1,7 +1,9 @@
 import { Permission, Role } from 'appwrite'
 
 import { collections } from '@/constants/collections'
+import { notificationsService } from '@/features/notifications/services/notificationsService'
 import { dbService, Query } from '@/services/appwrite/db'
+import { ensureSafeId, sanitizeTextInput } from '@/utils/security'
 
 const MESSAGE_BATCH_LIMIT = 200
 
@@ -21,13 +23,16 @@ function sortByCreatedAtDescending(items) {
   })
 }
 
-function buildMessagePermissions(senderId, receiverId) {
+export function buildMessagePermissions(senderId, receiverId) {
+  const safeSenderId = ensureSafeId(senderId, 'Sender ID')
+  const safeReceiverId = ensureSafeId(receiverId, 'Receiver ID')
+
   return [
-    Permission.read(Role.user(senderId)),
-    Permission.read(Role.user(receiverId)),
-    Permission.update(Role.user(senderId)),
-    Permission.update(Role.user(receiverId)),
-    Permission.delete(Role.user(senderId)),
+    Permission.read(Role.user(safeSenderId)),
+    Permission.read(Role.user(safeReceiverId)),
+    Permission.update(Role.user(safeSenderId)),
+    Permission.update(Role.user(safeReceiverId)),
+    Permission.delete(Role.user(safeSenderId)),
   ]
 }
 
@@ -80,69 +85,100 @@ function createConversationSummaryMap(messages, currentUserId) {
 }
 
 export function buildConversationId(listingId, userAId, userBId) {
-  if (!listingId || !userAId || !userBId) {
-    throw new Error('Missing conversation ID inputs.')
-  }
+  const safeListingId = ensureSafeId(listingId, 'Listing ID')
+  const safeUserAId = ensureSafeId(userAId, 'User ID')
+  const safeUserBId = ensureSafeId(userBId, 'User ID')
 
-  const [firstUserId, secondUserId] = [userAId, userBId].sort()
-  return `${listingId}:${firstUserId}:${secondUserId}`
+  const [firstUserId, secondUserId] = [safeUserAId, safeUserBId].sort()
+  return `${safeListingId}:${firstUserId}:${secondUserId}`
 }
 
 export const messagingService = {
   listUserConversations: async ({ userId }) => {
+    const safeUserId = ensureSafeId(userId, 'User ID')
     const [sentMessages, receivedMessages] = await Promise.all([
       dbService.listDocuments({
         collectionId: collections.messages,
-        queries: [Query.equal('senderId', userId), Query.orderDesc('$createdAt'), Query.limit(MESSAGE_BATCH_LIMIT)],
+        queries: [Query.equal('senderId', safeUserId), Query.orderDesc('$createdAt'), Query.limit(MESSAGE_BATCH_LIMIT)],
       }),
       dbService.listDocuments({
         collectionId: collections.messages,
-        queries: [Query.equal('receiverId', userId), Query.orderDesc('$createdAt'), Query.limit(MESSAGE_BATCH_LIMIT)],
+        queries: [Query.equal('receiverId', safeUserId), Query.orderDesc('$createdAt'), Query.limit(MESSAGE_BATCH_LIMIT)],
       }),
     ])
 
     const allMessages = dedupeById([...sentMessages.documents, ...receivedMessages.documents])
-    return createConversationSummaryMap(sortByCreatedAtDescending(allMessages), userId)
+    return createConversationSummaryMap(sortByCreatedAtDescending(allMessages), safeUserId)
   },
 
   listConversationMessages: async ({ conversationId }) => {
+    const safeConversationId = ensureSafeId(conversationId, 'Conversation ID')
+
     const response = await dbService.listDocuments({
       collectionId: collections.messages,
-      queries: [Query.equal('conversationId', conversationId), Query.orderAsc('$createdAt'), Query.limit(MESSAGE_BATCH_LIMIT)],
+      queries: [Query.equal('conversationId', safeConversationId), Query.orderAsc('$createdAt'), Query.limit(MESSAGE_BATCH_LIMIT)],
     })
 
     return response.documents
   },
 
   sendMessage: async ({ listingId, senderId, receiverId, body }) => {
-    const text = String(body || '').trim()
+    const safeSenderId = ensureSafeId(senderId, 'Sender ID')
+    const safeReceiverId = ensureSafeId(receiverId, 'Receiver ID')
+    const safeListingId = ensureSafeId(listingId, 'Listing ID')
+
+    if (safeSenderId === safeReceiverId) {
+      throw new Error('Sender and receiver cannot be the same user.')
+    }
+
+    const text = sanitizeTextInput(body, { maxLength: 1000, allowMultiline: true })
     if (!text) {
       throw new Error('Message cannot be empty.')
     }
 
-    const conversationId = buildConversationId(listingId, senderId, receiverId)
+    const conversationId = buildConversationId(safeListingId, safeSenderId, safeReceiverId)
 
-    return dbService.createDocument({
+    const createdMessage = await dbService.createDocument({
       collectionId: collections.messages,
       data: {
         conversationId,
-        listingId,
-        senderId,
-        receiverId,
+        listingId: safeListingId,
+        senderId: safeSenderId,
+        receiverId: safeReceiverId,
         body: text,
         read: false,
         createdAt: new Date().toISOString(),
       },
-      permissions: buildMessagePermissions(senderId, receiverId),
+      permissions: buildMessagePermissions(safeSenderId, safeReceiverId),
     })
+
+    if (safeReceiverId !== safeSenderId) {
+      try {
+        await notificationsService.createNotification({
+          userId: safeReceiverId,
+          type: 'message_new',
+          title: 'New message',
+          body: 'You received a new message in your inbox.',
+          entityType: 'conversation',
+          entityId: conversationId,
+        })
+      } catch {
+        // Non-blocking notification failure.
+      }
+    }
+
+    return createdMessage
   },
 
   markConversationAsRead: async ({ conversationId, userId }) => {
+    const safeConversationId = ensureSafeId(conversationId, 'Conversation ID')
+    const safeUserId = ensureSafeId(userId, 'User ID')
+
     const unreadResponse = await dbService.listDocuments({
       collectionId: collections.messages,
       queries: [
-        Query.equal('conversationId', conversationId),
-        Query.equal('receiverId', userId),
+        Query.equal('conversationId', safeConversationId),
+        Query.equal('receiverId', safeUserId),
         Query.equal('read', false),
         Query.limit(MESSAGE_BATCH_LIMIT),
       ],
