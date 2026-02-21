@@ -14,6 +14,7 @@ export const appConfig = {
   appwriteEndpoint: readEnv('VITE_APPWRITE_ENDPOINT', 'https://cloud.appwrite.io/v1'),
   appwriteProjectId: readEnv('VITE_APPWRITE_PROJECT_ID'),
   appwriteDatabaseId: readEnv('VITE_APPWRITE_DATABASE_ID'),
+  manageRentalsUrl: readEnv('VITE_MANAGE_RENTALS_URL', 'http://d48400cswogkw0g4gwggwcgs.194.163.136.254.sslip.io/'),
   enableEmailVerification: readEnv('VITE_ENABLE_EMAIL_VERIFICATION', 'false') === 'true',
   enableAppwriteFunctions: readEnv('VITE_ENABLE_APPWRITE_FUNCTIONS', 'false') === 'true',
 }

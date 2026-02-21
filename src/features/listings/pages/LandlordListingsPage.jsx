@@ -24,6 +24,13 @@ function StatusBadge({ status }) {
   return <Badge variant="neutral">Draft</Badge>
 }
 
+function toListingIntentLabel(value) {
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase()
+  return normalized === 'sale' ? 'For Sale' : 'For Rent'
+}
+
 export function LandlordListingsPage() {
   const { user } = useAuth()
   const [listings, setListings] = useState([])
@@ -104,10 +111,14 @@ export function LandlordListingsPage() {
                 <div>
                   <CardTitle>{listing.title}</CardTitle>
                   <p className="mt-1 text-sm text-slate-600">
-                    {listing.city}, {listing.country} • {listing.currency} {Number(listing.rentAmount || 0).toLocaleString()}
+                    {listing.city}, {listing.country} | {listing.currency} {Number(listing.rentAmount || 0).toLocaleString()}
+                    {String(listing.propertyType || '').trim() === 'land' && listing.district ? ` | ${listing.district}` : ''}
                   </p>
                 </div>
-                <StatusBadge status={listing.status} />
+                <div className="flex items-center gap-2">
+                  <Badge variant="info">{toListingIntentLabel(listing.listingIntent)}</Badge>
+                  <StatusBadge status={listing.status} />
+                </div>
               </CardHeader>
 
               <CardBody className="flex flex-wrap items-center justify-between gap-3">

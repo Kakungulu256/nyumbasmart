@@ -138,17 +138,19 @@ export const messagingService = {
 
     const conversationId = buildConversationId(safeListingId, safeSenderId, safeReceiverId)
 
+    const messagePayload = {
+      conversationId,
+      listingId: safeListingId,
+      senderId: safeSenderId,
+      receiverId: safeReceiverId,
+      body: text,
+      read: false,
+      createdAt: new Date().toISOString(),
+    }
+
     const createdMessage = await dbService.createDocument({
       collectionId: collections.messages,
-      data: {
-        conversationId,
-        listingId: safeListingId,
-        senderId: safeSenderId,
-        receiverId: safeReceiverId,
-        body: text,
-        read: false,
-        createdAt: new Date().toISOString(),
-      },
+      data: messagePayload,
       permissions: buildMessagePermissions(safeSenderId, safeReceiverId),
     })
 
@@ -159,8 +161,8 @@ export const messagingService = {
           type: 'message_new',
           title: 'New message',
           body: 'You received a new message in your inbox.',
-          entityType: 'conversation',
-          entityId: conversationId,
+          entityType: 'listing',
+          entityId: safeListingId,
         })
       } catch {
         // Non-blocking notification failure.

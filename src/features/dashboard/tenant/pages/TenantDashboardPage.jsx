@@ -43,10 +43,18 @@ function statusLabel(status) {
   return String(status || 'pending').replace('_', ' ').toUpperCase()
 }
 
-function fullName(profile) {
-  const firstName = String(profile?.firstName || '').trim()
+function profileLabel(profile, fallbackLabel = 'Landlord') {
   const lastName = String(profile?.lastName || '').trim()
-  return `${firstName} ${lastName}`.trim()
+  if (lastName) {
+    return lastName
+  }
+
+  const firstName = String(profile?.firstName || '').trim()
+  if (firstName) {
+    return firstName
+  }
+
+  return fallbackLabel
 }
 
 function eventTimestamp(item) {
@@ -195,11 +203,7 @@ export function TenantDashboardPage() {
         id: `msg-${conversation.conversationId}`,
         type: 'message',
         title: conversation.unreadCount > 0 ? `${conversation.unreadCount} unread message(s)` : 'Conversation updated',
-        subtitle:
-          fullName(profilesByUserId[conversation.participantId]) ||
-          conversation.participantId ||
-          listingsById[conversation.listingId]?.title ||
-          'Chat',
+        subtitle: profileLabel(profilesByUserId[conversation.participantId], 'Landlord') || listingsById[conversation.listingId]?.title || 'Chat',
         timestamp: conversation.lastMessageAt,
       }))
 
@@ -340,11 +344,11 @@ export function TenantDashboardPage() {
                 <article className={itemRowClassName} key={conversation.conversationId}>
                   <div className="flex items-center justify-between gap-2">
                     <p className="line-clamp-1 text-sm font-semibold text-slate-900">
-                      {fullName(profilesByUserId[conversation.participantId]) || conversation.participantId}
+                      {profileLabel(profilesByUserId[conversation.participantId], 'Landlord')}
                     </p>
                     {conversation.unreadCount > 0 && <Badge variant="danger">{conversation.unreadCount} unread</Badge>}
                   </div>
-                  <p className="line-clamp-1 text-xs text-slate-500">{listingsById[conversation.listingId]?.title || conversation.listingId}</p>
+                  <p className="line-clamp-1 text-xs text-slate-500">{listingsById[conversation.listingId]?.title || 'Listing'}</p>
                   <p className="line-clamp-1 text-xs text-slate-500">{conversation.lastMessageBody || 'No message text yet.'}</p>
                 </article>
               ))

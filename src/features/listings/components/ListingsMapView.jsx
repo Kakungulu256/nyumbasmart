@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet'
 
+import { cn } from '@/components/ui/cn'
 import { formatCurrency } from '@/utils/currency'
 
 function resolveMapCenter(listings, userLocation) {
@@ -73,11 +74,11 @@ function ListingPin({ listing }) {
   )
 }
 
-export function ListingsMapView({ listings, userLocation }) {
+export function ListingsMapView({ listings, userLocation, heightClassName = 'h-[420px]' }) {
   const center = resolveMapCenter(listings, userLocation)
 
   return (
-    <div className="h-[420px] overflow-hidden rounded-2xl border border-slate-200">
+    <div className={cn('overflow-hidden rounded-2xl border border-slate-200', heightClassName)}>
       <MapContainer center={center} className="h-full w-full" zoom={13}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'

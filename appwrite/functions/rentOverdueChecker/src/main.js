@@ -66,6 +66,16 @@ async function createOverdueNotification(databases, databaseId, notificationsCol
 }
 
 export default async ({ req, res, log, error }) => {
+  if (readEnv('ENABLE_PAYMENTS', 'false') !== 'true') {
+    return res.json(
+      {
+        ok: false,
+        message: 'Rent overdue checks are currently disabled in this deployment.',
+      },
+      410,
+    )
+  }
+
   if (!['POST', 'GET'].includes(req.method)) {
     return res.json({ ok: false, message: 'Method not allowed.' }, 405)
   }

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import { Avatar, Badge, Button, Card, CardBody, CardHeader, CardTitle, Spinner } from '@/components/ui'
 import { applicationsService } from '@/features/applications/services/applicationsService'
 import { buckets } from '@/constants/buckets'
 import { collections } from '@/constants/collections'
+import { getLandTenureLabel, getRegionLabel } from '@/features/listings/constants/ugandaLandMetadata'
 import { useAuth } from '@/hooks/useAuth'
 import { listingsService } from '@/features/listings/services/listingsService'
 import { savedListingsService } from '@/features/listings/services/savedListingsService'
@@ -34,6 +35,13 @@ function toDateLabel(value) {
   return parsedDate.toLocaleDateString()
 }
 
+function toListingIntentLabel(value) {
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase()
+  return normalized === 'sale' ? 'For Sale' : 'For Rent'
+}
+
 function fileViewUrl(bucketId, fileId) {
   if (!fileId) {
     return ''
@@ -57,6 +65,7 @@ function PropertyRow({ label, value }) {
 }
 
 export function ListingDetailPage() {
+  const location = useLocation()
   const navigate = useNavigate()
   const { listingId } = useParams()
   const { isAuthenticated, role, user } = useAuth()
@@ -129,11 +138,14 @@ export function ListingDetailPage() {
   )
 
   const activeImageUrl = imageUrls[activeImageIndex] || ''
+  const backToListings = typeof location.state?.returnTo === 'string' && location.state.returnTo.trim() ? location.state.returnTo : '/listings'
   const isOwner = Boolean(user?.$id && listing?.landlordId && user.$id === listing.landlordId)
   const landlordName = `${landlordProfile?.firstName || ''} ${landlordProfile?.lastName || ''}`.trim() || 'Landlord'
   const landlordAvatar = fileViewUrl(buckets.avatars, landlordProfile?.avatarFileId)
   const landlordLocation = [landlordProfile?.city, landlordProfile?.country].filter(Boolean).join(', ')
   const canSaveListing = !isOwner && role !== 'landlord'
+  const isLandListing = String(listing?.propertyType || '').trim() === 'land'
+  const listingIntentLabel = toListingIntentLabel(listing?.listingIntent)
 
   useEffect(() => {
     if (!listing?.$id || !user?.$id || role !== 'tenant') {
@@ -221,8 +233,8 @@ export function ListingDetailPage() {
       return
     }
 
-    if (!canSaveListing || role !== 'tenant' || !user?.$id) {
-      toast.error('Only tenant accounts can save listings.')
+    if (!canSaveListing || role === 'landlord' || !user?.$id) {
+      toast.error('Only non-landlord accounts can save listings.')
       return
     }
 
@@ -264,8 +276,16 @@ export function ListingDetailPage() {
   return (
     <div className="space-y-6">
       <header className="space-y-2">
+        <div>
+          <Link to={backToListings}>
+            <Button size="sm" type="button" variant="secondary">
+              Back to listings
+            </Button>
+          </Link>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant={listing.status === 'available' ? 'success' : 'neutral'}>{String(listing.status || 'unknown').toUpperCase()}</Badge>
+          <Badge variant="info">{listingIntentLabel}</Badge>
           <p className="text-xs uppercase tracking-wide text-slate-500">
             {listing.propertyType} | {listing.paymentFrequency}
           </p>
@@ -335,6 +355,10 @@ export function ListingDetailPage() {
               <PropertyRow label="Bedrooms" value={formatValue(listing.bedrooms)} />
               <PropertyRow label="Bathrooms" value={formatValue(listing.bathrooms)} />
               <PropertyRow label="Property type" value={formatValue(listing.propertyType)} />
+              <PropertyRow label="Listing intent" value={listingIntentLabel} />
+              {isLandListing && <PropertyRow label="Land tenure system" value={formatValue(getLandTenureLabel(listing.landTenureType))} />}
+              {isLandListing && <PropertyRow label="Region" value={formatValue(getRegionLabel(listing.region))} />}
+              {isLandListing && <PropertyRow label="District" value={formatValue(listing.district)} />}
               <PropertyRow label="Payment frequency" value={formatValue(listing.paymentFrequency)} />
               <PropertyRow label="Available from" value={toDateLabel(listing.availableFrom)} />
               <PropertyRow label="Neighborhood" value={formatValue(listing.neighborhood)} />

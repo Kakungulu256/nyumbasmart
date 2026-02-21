@@ -21,6 +21,16 @@ function required(value) {
 }
 
 export default async ({ req, res }) => {
+  if (process.env.ENABLE_PAYMENTS !== 'true') {
+    return res.json(
+      {
+        ok: false,
+        message: 'Receipt generation is currently disabled in this deployment.',
+      },
+      410,
+    )
+  }
+
   if (req.method !== 'POST') {
     return res.json({ ok: false, message: 'Method not allowed.' }, 405)
   }

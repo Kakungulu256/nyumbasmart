@@ -13,14 +13,15 @@ const VALID_NOTIFICATION_TYPES = [
   'application_rejected',
   'lease_signature_needed',
   'lease_signed',
-  'payment_request',
-  'payment_confirmed',
-  'payment_overdue',
   'lease_expiry',
   'maintenance_new',
   'maintenance_updated',
   'message_new',
 ]
+
+function isPermissionShareError(error) {
+  return Number(error?.code) === 401 || error?.type === 'user_unauthorized'
+}
 
 export function buildNotificationPermissions(userId) {
   const safeUserId = ensureSafeId(userId, 'Notification user ID')
@@ -45,6 +46,11 @@ function normalizeNotificationPayload(payload) {
 
   const normalizedChannels = sanitizeStringArray(payload.channels, { maxItems: 4, maxItemLength: 20 })
 
+  const entityId = payload.entityId ? ensureSafeId(payload.entityId, 'Entity ID') : null
+  if (entityId && entityId.length > 36) {
+    throw new Error('Notification entity ID is too long.')
+  }
+
   return {
     userId: ensureSafeId(payload.userId, 'Notification user ID'),
     type: safeType,
@@ -53,7 +59,7 @@ function normalizeNotificationPayload(payload) {
     channels: normalizedChannels.length > 0 ? normalizedChannels : ['in_app'],
     status: safeStatus,
     entityType: sanitizeTextInput(payload.entityType, { maxLength: 40 }) || null,
-    entityId: payload.entityId ? ensureSafeId(payload.entityId, 'Entity ID') : null,
+    entityId,
     sentAt: payload.sentAt || new Date().toISOString(),
     createdAt: new Date().toISOString(),
   }
@@ -97,22 +103,50 @@ export const notificationsService = {
       throw new Error('Notification title and body are required.')
     }
 
-    const createdNotification = await dbService.createDocument({
-      collectionId: collections.notifications,
-      data,
-      permissions: buildNotificationPermissions(payload.userId),
-    })
+    let createdNotification = null
+    let persistedViaFunction = false
+
+    try {
+      createdNotification = await dbService.createDocument({
+        collectionId: collections.notifications,
+        data,
+        permissions: buildNotificationPermissions(payload.userId),
+      })
+    } catch (error) {
+      // Fallback to privileged function when cross-user permission sharing is blocked.
+      if (!isPermissionShareError(error) || !backendFunctionsService.isEnabled()) {
+        throw error
+      }
+
+      const functionResult = await backendFunctionsService.sendNotification({
+        ...data,
+        persistInApp: true,
+      })
+
+      if (functionResult?.executed && functionResult?.data?.ok) {
+        persistedViaFunction = true
+        createdNotification = {
+          ...data,
+          $id: functionResult.data.notificationId || 'notification-created-via-function',
+          $createdAt: data.createdAt,
+        }
+      } else {
+        throw error
+      }
+    }
 
     // Optional async channel fan-out (email/SMS/push) handled by Appwrite Function.
-    void backendFunctionsService
-      .sendNotification({
-        notificationId: createdNotification.$id,
-        ...data,
-        persistInApp: false,
-      })
-      .catch(() => {
-        // Non-blocking function execution failure.
-      })
+    if (!persistedViaFunction) {
+      void backendFunctionsService
+        .sendNotification({
+          notificationId: createdNotification.$id,
+          ...data,
+          persistInApp: false,
+        })
+        .catch(() => {
+          // Non-blocking function execution failure.
+        })
+    }
 
     return createdNotification
   },

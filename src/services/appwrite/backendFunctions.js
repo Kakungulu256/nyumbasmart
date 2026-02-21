@@ -88,39 +88,6 @@ export const backendFunctionsService = {
       },
     }),
 
-  generateReceipt: ({ paymentId, leaseId, tenantId, landlordId, amount, currency }) =>
-    executeFunction({
-      key: 'generateReceipt',
-      payload: {
-        paymentId,
-        leaseId,
-        tenantId,
-        landlordId,
-        amount,
-        currency,
-      },
-    }),
-
-  processMoMoPayment: ({ paymentId, leaseId, tenantId, phoneNumber, amount, currency, provider = 'mtn_momo' }) =>
-    executeFunction({
-      key: 'processMoMoPayment',
-      payload: {
-        paymentId,
-        leaseId,
-        tenantId,
-        phoneNumber,
-        amount,
-        currency,
-        provider,
-      },
-    }),
-
-  moMoWebhook: ({ event }) =>
-    executeFunction({
-      key: 'moMoWebhook',
-      payload: event,
-    }),
-
   sendNotification: (payload) =>
     executeFunction({
       key: 'sendNotification',
@@ -132,13 +99,6 @@ export const backendFunctionsService = {
     executeFunction({
       key: 'leaseExpiryReminder',
       payload: { daysAhead },
-      asyncExecution: true,
-    }),
-
-  rentOverdueChecker: ({ gracePeriodDays = 0 } = {}) =>
-    executeFunction({
-      key: 'rentOverdueChecker',
-      payload: { gracePeriodDays },
       asyncExecution: true,
     }),
 

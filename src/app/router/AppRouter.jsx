@@ -17,7 +17,6 @@ import { LandlordListingsPage } from '@/features/listings/pages/LandlordListings
 import { ListingsPage } from '@/features/listings/pages/ListingsPage'
 import { MessagingPage } from '@/features/messaging/pages/MessagingPage'
 import { NotificationsPage } from '@/features/notifications/pages/NotificationsPage'
-import { PaymentsPage } from '@/features/payments/pages/PaymentsPage'
 
 function NotFoundPage() {
   return (
@@ -111,14 +110,6 @@ export function AppRouter() {
           element={
             <ProtectedRoute requireVerified>
               <NotificationsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/payments"
-          element={
-            <ProtectedRoute requireVerified allowedRoles={['tenant']}>
-              <PaymentsPage />
             </ProtectedRoute>
           }
         />

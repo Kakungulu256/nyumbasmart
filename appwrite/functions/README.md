@@ -4,14 +4,17 @@ This folder contains deployable function code for NyumbaSmart.
 
 ## Functions Included
 - `generateLeasePDF`
+- `sendNotification`
+- `leaseExpiryReminder`
+- `scanUploadedFile`
+- `ticketEscalation`
+
+## Disabled in Current Phase
+The following payment-related functions are kept in the repository for future reactivation, but are intentionally disabled at runtime for the current free-listing phase:
 - `generateReceipt`
 - `processMoMoPayment`
 - `moMoWebhook`
-- `sendNotification`
-- `leaseExpiryReminder`
 - `rentOverdueChecker`
-- `scanUploadedFile`
-- `ticketEscalation`
 
 ## Manual Setup in Appwrite
 1. In Appwrite Console, create one function per folder.
@@ -30,12 +33,11 @@ This folder contains deployable function code for NyumbaSmart.
 These defaults are used if env variables are not set:
 - `NOTIFICATIONS_COLLECTION_ID=notifications`
 - `LEASES_COLLECTION_ID=leases`
-- `PAYMENTS_COLLECTION_ID=payments`
 - `MAINTENANCE_TICKETS_COLLECTION_ID=maintenanceTickets`
 
 Optional:
-- `MOMO_WEBHOOK_SECRET` (for `moMoWebhook`)
 - `DELETE_SUSPICIOUS_UPLOADS=false` (for `scanUploadedFile`)
+- `ENABLE_PAYMENTS=false` (set `true` only when payment functions are re-enabled)
 
 ## Frontend Integration Toggle
 Frontend calls to Appwrite Functions are controlled by:

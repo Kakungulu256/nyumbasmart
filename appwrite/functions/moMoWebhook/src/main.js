@@ -42,6 +42,16 @@ function createAdminClient() {
 }
 
 export default async ({ req, res, log, error }) => {
+  if (readEnv('ENABLE_PAYMENTS', 'false') !== 'true') {
+    return res.json(
+      {
+        ok: false,
+        message: 'Payment webhook handling is currently disabled in this deployment.',
+      },
+      410,
+    )
+  }
+
   if (req.method !== 'POST') {
     return res.json({ ok: false, message: 'Method not allowed.' }, 405)
   }

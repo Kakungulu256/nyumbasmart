@@ -2,6 +2,7 @@
 
 NyumbaSmart is a rental management web app built with React + Vite + Appwrite.  
 Current scope includes auth, role-based dashboards, listings, applications, messaging, notifications, and baseline production/security tooling.
+Listing is currently free for landlords (no payment gateway enforced).
 
 ## Tech Stack
 - React 19 + Vite
@@ -57,6 +58,11 @@ npm run dev
 - GitHub Actions workflows:
   - `.github/workflows/ci.yml`
   - `.github/workflows/release-artifact.yml`
+
+## Flutter Mobile Starter
+- A Flutter starter client is included at `mobile/nyumbasmart_flutter`.
+- It uses the same Appwrite backend and schema (including buy/rent intent and Uganda land filters).
+- Setup guide: `mobile/nyumbasmart_flutter/README.md`.
 
 ## Appwrite Functions Source
 - Function source folders are in `appwrite/functions/`.

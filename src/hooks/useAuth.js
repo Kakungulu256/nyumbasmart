@@ -14,8 +14,19 @@ function isConflict(error) {
   return error?.code === 409 || error?.type === 'document_already_exists'
 }
 
+function normalizeUsername(value, fallback = '') {
+  const raw = String(value || fallback || '')
+    .trim()
+    .toLowerCase()
+  const normalized = raw.replace(/[^a-z0-9_.]/g, '')
+
+  return normalized.slice(0, 30)
+}
+
 function buildProfilePermissions(userId) {
   return [
+    // Public profile read is needed for tenant-landlord names across listings and chat.
+    Permission.read(Role.users()),
     Permission.read(Role.user(userId)),
     Permission.update(Role.user(userId)),
     Permission.delete(Role.user(userId)),
@@ -97,8 +108,21 @@ export function useAuth() {
       return existingProfile
     }
 
+    const normalizedUsername = normalizeUsername(payload.username, `${payload.firstName}.${payload.lastName}`)
+    if (normalizedUsername) {
+      const existingByUsername = await dbService.listDocuments({
+        collectionId: collections.users,
+        queries: [Query.equal('username', normalizedUsername), Query.limit(1)],
+      })
+
+      if (existingByUsername.documents.some((profileDoc) => profileDoc.userId !== payload.userId)) {
+        throw new Error('This username is already taken. Please choose another one.')
+      }
+    }
+
     const data = {
       userId: payload.userId,
+      username: normalizedUsername,
       role: payload.role,
       firstName: payload.firstName,
       lastName: payload.lastName,

@@ -11,6 +11,7 @@ export function buildSchema(ids) {
       documentSecurity: true,
       attributes: [
         { key: 'userId', type: 'string', size: 36, required: true },
+        { key: 'username', type: 'string', size: 30, required: false },
         { key: 'role', type: 'enum', required: true, elements: ['landlord', 'tenant', 'admin'] },
         { key: 'firstName', type: 'string', size: 80, required: true },
         { key: 'lastName', type: 'string', size: 80, required: true },
@@ -27,6 +28,7 @@ export function buildSchema(ids) {
       ],
       indexes: [
         { key: 'users_userId_uq', type: 'unique', attributes: ['userId'] },
+        { key: 'users_username_idx', type: 'key', attributes: ['username'] },
         { key: 'users_phone_uq', type: 'unique', attributes: ['phone'] },
         { key: 'users_role_idx', type: 'key', attributes: ['role'] },
         {
@@ -47,10 +49,17 @@ export function buildSchema(ids) {
         { key: 'title', type: 'string', size: 140, required: true },
         { key: 'description', type: 'string', size: 2000, required: true },
         {
+          key: 'listingIntent',
+          type: 'enum',
+          required: false,
+          elements: ['rent', 'sale'],
+          xdefault: 'rent',
+        },
+        {
           key: 'propertyType',
           type: 'enum',
           required: true,
-          elements: ['apartment', 'house', 'room', 'studio', 'commercial'],
+          elements: ['apartment', 'house', 'duplex', 'land', 'room', 'studio', 'commercial'],
         },
         { key: 'rentAmount', type: 'integer', required: true, min: 0 },
         { key: 'currency', type: 'string', size: 3, required: true },
@@ -70,6 +79,19 @@ export function buildSchema(ids) {
         { key: 'neighborhood', type: 'string', size: 120, required: false },
         { key: 'city', type: 'string', size: 80, required: true },
         { key: 'country', type: 'string', size: 2, required: true },
+        {
+          key: 'region',
+          type: 'enum',
+          required: false,
+          elements: ['central', 'eastern', 'northern', 'western'],
+        },
+        { key: 'district', type: 'string', size: 80, required: false },
+        {
+          key: 'landTenureType',
+          type: 'enum',
+          required: false,
+          elements: ['mailo_private', 'mailo_official', 'freehold', 'leasehold', 'customary'],
+        },
         {
           key: 'status',
           type: 'enum',
@@ -107,6 +129,20 @@ export function buildSchema(ids) {
         },
         { key: 'list_rent_idx', type: 'key', attributes: ['rentAmount'] },
         { key: 'list_type_idx', type: 'key', attributes: ['propertyType'] },
+        {
+          key: 'list_intent_status_idx',
+          type: 'key',
+          attributes: ['listingIntent', 'status'],
+          orders: ['asc', 'asc'],
+        },
+        { key: 'list_region_idx', type: 'key', attributes: ['region'] },
+        {
+          key: 'list_region_district_idx',
+          type: 'key',
+          attributes: ['region', 'district'],
+          orders: ['asc', 'asc'],
+        },
+        { key: 'list_land_tenure_idx', type: 'key', attributes: ['landTenureType'] },
         { key: 'list_available_idx', type: 'key', attributes: ['availableFrom'] },
         { key: 'list_created_idx', type: 'key', attributes: ['createdAt'] },
         {
@@ -496,9 +532,6 @@ export function buildSchema(ids) {
             'application_rejected',
             'lease_signature_needed',
             'lease_signed',
-            'payment_request',
-            'payment_confirmed',
-            'payment_overdue',
             'lease_expiry',
             'maintenance_new',
             'maintenance_updated',

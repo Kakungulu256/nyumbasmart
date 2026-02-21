@@ -80,21 +80,23 @@ export const applicationsService = {
       throw new Error('You already have an active application for this property.')
     }
 
+    const payload = {
+      listingId: safeListingId,
+      tenantId: safeTenantId,
+      landlordId: safeLandlordId,
+      status: 'pending',
+      moveInDate: toIsoDateOrNull(moveInDate),
+      coverNote: sanitizeTextInput(coverNote, {
+        maxLength: 1200,
+        allowMultiline: true,
+      }),
+      tenantDocFileIds: [],
+      createdAt: new Date().toISOString(),
+    }
+
     const createdApplication = await dbService.createDocument({
       collectionId: collections.applications,
-      data: {
-        listingId: safeListingId,
-        tenantId: safeTenantId,
-        landlordId: safeLandlordId,
-        status: 'pending',
-        moveInDate: toIsoDateOrNull(moveInDate),
-        coverNote: sanitizeTextInput(coverNote, {
-          maxLength: 1200,
-          allowMultiline: true,
-        }),
-        tenantDocFileIds: [],
-        createdAt: new Date().toISOString(),
-      },
+      data: payload,
       permissions: buildApplicationPermissions(safeTenantId, safeLandlordId),
     })
 

@@ -13,6 +13,12 @@ import { authService } from '@/services/appwrite/auth'
 
 const registerSchema = z
   .object({
+    username: z
+      .string()
+      .trim()
+      .min(3, 'Username must be at least 3 characters.')
+      .max(30, 'Username must be at most 30 characters.')
+      .regex(/^[a-zA-Z0-9_.]+$/, 'Use only letters, numbers, underscore, or dot.'),
     firstName: z.string().min(2, 'First name is required.'),
     lastName: z.string().min(2, 'Last name is required.'),
     email: z.string().email('Enter a valid email address.'),
@@ -38,6 +44,7 @@ export function RegisterPage() {
   } = useForm({
     resolver: zodResolver(registerSchema),
     defaultValues: {
+      username: '',
       firstName: '',
       lastName: '',
       email: '',
@@ -63,6 +70,7 @@ export function RegisterPage() {
 
       await createProfile({
         userId: user.$id,
+        username: values.username,
         role: values.role,
         firstName: values.firstName,
         lastName: values.lastName,
@@ -82,6 +90,8 @@ export function RegisterPage() {
   return (
     <AuthCard title="Create account" subtitle="Register as a landlord or tenant.">
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+        <Input error={errors.username?.message} label="Username" required type="text" {...register('username')} />
+
         <div className="grid gap-4 sm:grid-cols-2">
           <Input error={errors.firstName?.message} label="First name" required type="text" {...register('firstName')} />
           <Input error={errors.lastName?.message} label="Last name" required type="text" {...register('lastName')} />

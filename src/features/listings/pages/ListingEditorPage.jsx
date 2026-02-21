@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -7,12 +7,14 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Badge, Button, Card, CardBody, CardHeader, CardTitle, FormField, Input, Spinner, getFieldInputClassName } from '@/components/ui'
 import { useAuth } from '@/hooks/useAuth'
 import { ListingMediaManager } from '@/features/listings/components/ListingMediaManager'
+import { getDistrictOptionsForRegion, ugandaLandTenureOptions, ugandaRegionOptions } from '@/features/listings/constants/ugandaLandMetadata'
 import { listingsService } from '@/features/listings/services/listingsService'
 import {
   listingFormDefaultValues,
   listingFormSchema,
   listingStepConfig,
   mapListingDocumentToFormValues,
+  listingIntentOptions,
   paymentFrequencyOptions,
   propertyTypeOptions,
 } from '@/features/listings/utils/listingForm'
@@ -57,6 +59,59 @@ export function ListingEditorPage() {
     control,
     name: 'imageFileIds',
   })
+  const selectedPropertyType = useWatch({
+    control,
+    name: 'propertyType',
+  })
+  const selectedListingIntent = useWatch({
+    control,
+    name: 'listingIntent',
+  })
+  const selectedRegion = useWatch({
+    control,
+    name: 'region',
+  })
+  const selectedDistrict = useWatch({
+    control,
+    name: 'district',
+  })
+
+  const isLandListing = selectedPropertyType === 'land'
+  const isSaleListing = selectedListingIntent === 'sale'
+  const districtOptions = useMemo(() => getDistrictOptionsForRegion(selectedRegion), [selectedRegion])
+
+  useEffect(() => {
+    if (!isLandListing) {
+      setValue('region', '', { shouldDirty: false, shouldValidate: false, shouldTouch: false })
+      setValue('district', '', { shouldDirty: false, shouldValidate: false, shouldTouch: false })
+      setValue('landTenureType', '', { shouldDirty: false, shouldValidate: false, shouldTouch: false })
+      return
+    }
+
+    setValue('bedrooms', 0, { shouldDirty: false, shouldValidate: true, shouldTouch: false })
+    setValue('bathrooms', 0, { shouldDirty: false, shouldValidate: true, shouldTouch: false })
+  }, [isLandListing, setValue])
+
+  useEffect(() => {
+    if (!isSaleListing) {
+      return
+    }
+
+    setValue('paymentFrequency', 'annually', { shouldDirty: false, shouldValidate: true, shouldTouch: false })
+  }, [isSaleListing, setValue])
+
+  useEffect(() => {
+    if (!isLandListing || !selectedDistrict) {
+      return
+    }
+
+    const districtStillValid = districtOptions.some((option) => option.value === selectedDistrict)
+    if (districtStillValid) {
+      return
+    }
+
+    setValue('district', '', { shouldDirty: true, shouldValidate: true, shouldTouch: true })
+  }, [districtOptions, isLandListing, selectedDistrict, setValue])
 
   useEffect(() => {
     if (!isEditMode || !listingId || !user?.$id) {
@@ -181,12 +236,9 @@ export function ListingEditorPage() {
           </select>
         </FormField>
 
-        <Input error={errors.rentAmount?.message} label="Rent amount" required type="number" {...register('rentAmount')} />
-        <Input error={errors.currency?.message} label="Currency (ISO code)" required maxLength={3} {...register('currency')} />
-
-        <FormField error={errors.paymentFrequency?.message} id="paymentFrequency" label="Payment frequency" required>
-          <select className={getFieldInputClassName({ hasError: Boolean(errors.paymentFrequency) })} id="paymentFrequency" {...register('paymentFrequency')}>
-            {paymentFrequencyOptions.map((option) => (
+        <FormField error={errors.listingIntent?.message} id="listingIntent" label="Listing intent" required>
+          <select className={getFieldInputClassName({ hasError: Boolean(errors.listingIntent) })} id="listingIntent" {...register('listingIntent')}>
+            {listingIntentOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -194,8 +246,27 @@ export function ListingEditorPage() {
           </select>
         </FormField>
 
-        <Input error={errors.bedrooms?.message} label="Bedrooms" required type="number" {...register('bedrooms')} />
-        <Input error={errors.bathrooms?.message} label="Bathrooms" required type="number" {...register('bathrooms')} />
+        <Input error={errors.rentAmount?.message} label={isSaleListing ? 'Sale price' : 'Rent amount'} required type="number" {...register('rentAmount')} />
+        <Input error={errors.currency?.message} label="Currency (ISO code)" required maxLength={3} {...register('currency')} />
+
+        {!isSaleListing && (
+          <FormField error={errors.paymentFrequency?.message} id="paymentFrequency" label="Payment frequency" required>
+            <select className={getFieldInputClassName({ hasError: Boolean(errors.paymentFrequency) })} id="paymentFrequency" {...register('paymentFrequency')}>
+              {paymentFrequencyOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </FormField>
+        )}
+
+        {!isLandListing && (
+          <>
+            <Input error={errors.bedrooms?.message} label="Bedrooms" required type="number" {...register('bedrooms')} />
+            <Input error={errors.bathrooms?.message} label="Bathrooms" required type="number" {...register('bathrooms')} />
+          </>
+        )}
       </div>
     )
   } else if (currentStep.id === 'location') {
@@ -205,6 +276,47 @@ export function ListingEditorPage() {
         <Input error={errors.neighborhood?.message} label="Neighborhood" {...register('neighborhood')} />
         <Input error={errors.city?.message} label="City" required {...register('city')} />
         <Input error={errors.country?.message} label="Country code" required maxLength={2} {...register('country')} />
+        {isLandListing && (
+          <>
+            <FormField error={errors.region?.message} id="region" label="Region" required>
+              <select className={getFieldInputClassName({ hasError: Boolean(errors.region) })} id="region" {...register('region')}>
+                <option value="">Select region</option>
+                {ugandaRegionOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+
+            <FormField error={errors.district?.message} id="district" label="District" required>
+              <select
+                className={getFieldInputClassName({ hasError: Boolean(errors.district) })}
+                disabled={!selectedRegion}
+                id="district"
+                {...register('district')}
+              >
+                <option value="">{selectedRegion ? 'Select district' : 'Select region first'}</option>
+                {districtOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+
+            <FormField error={errors.landTenureType?.message} id="landTenureType" label="Land tenure system" required>
+              <select className={getFieldInputClassName({ hasError: Boolean(errors.landTenureType) })} id="landTenureType" {...register('landTenureType')}>
+                <option value="">Select tenure system</option>
+                {ugandaLandTenureOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+          </>
+        )}
         <Input error={errors.latitude?.message} label="Latitude" required step="0.000001" type="number" {...register('latitude')} />
         <Input error={errors.longitude?.message} label="Longitude" required step="0.000001" type="number" {...register('longitude')} />
         <Input className="md:col-span-2" error={errors.availableFrom?.message} hint="Optional. Leave blank if the property is immediately available." label="Available from" type="datetime-local" {...register('availableFrom')} />

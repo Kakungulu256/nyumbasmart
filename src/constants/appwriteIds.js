@@ -32,12 +32,8 @@ export const appwriteIds = {
   },
   functions: {
     generateLeasePdf: readEnv('VITE_FUNCTION_GENERATE_LEASE_PDF_ID', 'generateLeasePDF'),
-    generateReceipt: readEnv('VITE_FUNCTION_GENERATE_RECEIPT_ID', 'generateReceipt'),
-    processMoMoPayment: readEnv('VITE_FUNCTION_PROCESS_MOMO_PAYMENT_ID', 'processMoMoPayment'),
-    moMoWebhook: readEnv('VITE_FUNCTION_MOMO_WEBHOOK_ID', 'moMoWebhook'),
     sendNotification: readEnv('VITE_FUNCTION_SEND_NOTIFICATION_ID', 'sendNotification'),
     leaseExpiryReminder: readEnv('VITE_FUNCTION_LEASE_EXPIRY_REMINDER_ID', 'leaseExpiryReminder'),
-    rentOverdueChecker: readEnv('VITE_FUNCTION_RENT_OVERDUE_CHECKER_ID', 'rentOverdueChecker'),
     scanUploadedFile: readEnv('VITE_FUNCTION_SCAN_UPLOADED_FILE_ID', 'scanUploadedFile'),
     ticketEscalation: readEnv('VITE_FUNCTION_TICKET_ESCALATION_ID', 'ticketEscalation'),
   },

@@ -1,12 +1,17 @@
 import { Permission, Role } from 'appwrite'
 
 import { collections } from '@/constants/collections'
+import { ugandaLandTenureValues, ugandaRegionOptions } from '@/features/listings/constants/ugandaLandMetadata'
 import { dbService, Query } from '@/services/appwrite/db'
 import { ensureFiniteNumber, ensureSafeId, sanitizeCode, sanitizeStringArray, sanitizeTextInput } from '@/utils/security'
 
 const VALID_LISTING_STATUSES = ['available', 'occupied', 'draft', 'suspended']
-const VALID_PROPERTY_TYPES = ['apartment', 'house', 'room', 'studio', 'commercial']
+const VALID_PROPERTY_TYPES = ['apartment', 'house', 'duplex', 'land', 'room', 'studio', 'commercial']
 const VALID_PAYMENT_FREQUENCIES = ['monthly', 'quarterly', 'annually']
+const VALID_LISTING_INTENTS = ['rent', 'sale']
+const VALID_UGANDA_REGIONS = ugandaRegionOptions.map((option) => option.value)
+const VALID_LAND_TENURE_TYPES = ugandaLandTenureValues
+const LAND_SCHEMA_FILTER_ATTRIBUTES = ['region', 'district', 'landTenureType', 'listingIntent']
 
 export function buildListingPermissions({ landlordId, isPublished }) {
   const safeLandlordId = ensureSafeId(landlordId, 'Landlord ID')
@@ -43,6 +48,20 @@ function toIsoStringOrNull(value) {
   return Number.isNaN(parsedDate.getTime()) ? null : parsedDate.toISOString()
 }
 
+function isMissingSchemaAttributeError(error, attributes = []) {
+  const message = String(error?.message || '').toLowerCase()
+  if (!message.includes('attribute not found in schema')) {
+    return false
+  }
+
+  return attributes.some((attribute) => message.includes(String(attribute).toLowerCase()))
+}
+
+function isMissingFulltextIndexError(error) {
+  const message = String(error?.message || '').toLowerCase()
+  return message.includes('requires a fulltext index')
+}
+
 function normalizeListingPayload(values, status) {
   const normalizedStatus = String(status || 'draft').trim()
   if (!VALID_LISTING_STATUSES.includes(normalizedStatus)) {
@@ -59,6 +78,13 @@ function normalizeListingPayload(values, status) {
     throw new Error('Payment frequency is invalid.')
   }
 
+  const listingIntent = String(values.listingIntent || '')
+    .trim()
+    .toLowerCase()
+  if (!VALID_LISTING_INTENTS.includes(listingIntent)) {
+    throw new Error('Listing intent is invalid.')
+  }
+
   const imageFileIds = Array.isArray(values.imageFileIds)
     ? values.imageFileIds.map((value) => String(value || '').trim()).filter(Boolean)
     : formatArrayInput(values.imageFileIdsText)
@@ -67,6 +93,13 @@ function normalizeListingPayload(values, status) {
   const description = sanitizeTextInput(values.description, { maxLength: 2000, allowMultiline: true })
   const address = sanitizeTextInput(values.address, { maxLength: 240 })
   const city = sanitizeTextInput(values.city, { maxLength: 80 })
+  const region = String(values.region || '')
+    .trim()
+    .toLowerCase()
+  const district = sanitizeTextInput(values.district, { maxLength: 80 })
+  const landTenureType = String(values.landTenureType || '')
+    .trim()
+    .toLowerCase()
 
   if (!title) {
     throw new Error('Listing title is required.')
@@ -84,10 +117,25 @@ function normalizeListingPayload(values, status) {
     throw new Error('Listing city is required.')
   }
 
+  if (propertyType === 'land') {
+    if (!region || !VALID_UGANDA_REGIONS.includes(region)) {
+      throw new Error('A valid Ugandan region is required for land listings.')
+    }
+
+    if (!district) {
+      throw new Error('District is required for land listings.')
+    }
+
+    if (!landTenureType || !VALID_LAND_TENURE_TYPES.includes(landTenureType)) {
+      throw new Error('A valid Ugandan land tenure system is required for land listings.')
+    }
+  }
+
   return {
     landlordId: ensureSafeId(values.landlordId, 'Landlord ID'),
     title,
     description,
+    listingIntent,
     propertyType,
     rentAmount: ensureFiniteNumber(values.rentAmount, { label: 'Rent amount', integer: true, min: 0 }),
     currency: sanitizeCode(values.currency, { label: 'Currency code', exactLength: 3 }),
@@ -104,6 +152,9 @@ function normalizeListingPayload(values, status) {
     neighborhood: sanitizeTextInput(values.neighborhood, { maxLength: 120 }),
     city,
     country: sanitizeCode(values.country, { label: 'Country code', exactLength: 2 }),
+    region: propertyType === 'land' ? region : '',
+    district: propertyType === 'land' ? district : '',
+    landTenureType: propertyType === 'land' ? landTenureType : '',
     status: normalizedStatus,
     availableFrom: toIsoStringOrNull(values.availableFrom),
     updatedAt: new Date().toISOString(),
@@ -112,41 +163,71 @@ function normalizeListingPayload(values, status) {
 
 export const listingsService = {
   listPublicListings: async ({ filters = {}, page = 1, limit = 9, mode = 'paged' } = {}) => {
-    const queries = [Query.equal('status', 'available')]
-
     const keyword = String(filters.keyword || '').trim()
     const city = String(filters.city || '').trim()
     const propertyType = String(filters.propertyType || '').trim()
+    const listingIntent = String(filters.listingIntent || '')
+      .trim()
+      .toLowerCase()
+    const region = String(filters.region || '')
+      .trim()
+      .toLowerCase()
+    const district = String(filters.district || '').trim()
+    const landTenureType = String(filters.landTenureType || '')
+      .trim()
+      .toLowerCase()
+    const shouldApplyLandTenureFilter = propertyType === 'land'
 
-    if (keyword) {
-      queries.push(Query.search('title', keyword))
-    }
+    const buildQueries = ({ includeLandSchemaFilters = true, includeKeywordSearch = true } = {}) => {
+      const queries = [Query.equal('status', 'available')]
 
-    if (city) {
-      queries.push(Query.equal('city', city))
-    }
-
-    if (propertyType && propertyType !== 'all') {
-      queries.push(Query.equal('propertyType', propertyType))
-    }
-
-    if (filters.minRent !== '' && filters.minRent !== null && filters.minRent !== undefined) {
-      const minRent = Number(filters.minRent)
-      if (Number.isFinite(minRent)) {
-        queries.push(Query.greaterThanEqual('rentAmount', minRent))
+      if (includeKeywordSearch && keyword) {
+        queries.push(Query.search('title', keyword))
       }
-    }
 
-    if (filters.maxRent !== '' && filters.maxRent !== null && filters.maxRent !== undefined) {
-      const maxRent = Number(filters.maxRent)
-      if (Number.isFinite(maxRent)) {
-        queries.push(Query.lessThanEqual('rentAmount', maxRent))
+      if (city) {
+        queries.push(Query.equal('city', city))
       }
+
+      if (propertyType && propertyType !== 'all') {
+        queries.push(Query.equal('propertyType', propertyType))
+      }
+
+      if (listingIntent && listingIntent !== 'all') {
+        queries.push(Query.equal('listingIntent', listingIntent))
+      }
+
+      if (includeLandSchemaFilters && region && region !== 'all') {
+        queries.push(Query.equal('region', region))
+      }
+
+      if (includeLandSchemaFilters && district && district !== 'all') {
+        queries.push(Query.equal('district', district))
+      }
+
+      if (includeLandSchemaFilters && shouldApplyLandTenureFilter && landTenureType && landTenureType !== 'all') {
+        queries.push(Query.equal('landTenureType', landTenureType))
+      }
+
+      if (filters.minRent !== '' && filters.minRent !== null && filters.minRent !== undefined) {
+        const minRent = Number(filters.minRent)
+        if (Number.isFinite(minRent)) {
+          queries.push(Query.greaterThanEqual('rentAmount', minRent))
+        }
+      }
+
+      if (filters.maxRent !== '' && filters.maxRent !== null && filters.maxRent !== undefined) {
+        const maxRent = Number(filters.maxRent)
+        if (Number.isFinite(maxRent)) {
+          queries.push(Query.lessThanEqual('rentAmount', maxRent))
+        }
+      }
+
+      queries.push(Query.orderDesc('$updatedAt'))
+      return queries
     }
 
-    queries.push(Query.orderDesc('$updatedAt'))
-
-    if (mode === 'all') {
+    const listAll = async (queries) => {
       const batchSize = Math.min(Math.max(10, limit), 100)
       const allDocuments = []
       let total = 0
@@ -173,15 +254,64 @@ export const listingsService = {
       }
     }
 
-    const response = await dbService.listDocuments({
-      collectionId: collections.listings,
-      queries: [...queries, Query.limit(limit), Query.offset(Math.max(0, (page - 1) * limit))],
-    })
+    const listPaged = async (queries) => {
+      const response = await dbService.listDocuments({
+        collectionId: collections.listings,
+        queries: [...queries, Query.limit(limit), Query.offset(Math.max(0, (page - 1) * limit))],
+      })
 
-    return {
-      documents: response.documents,
-      total: response.total,
+      return {
+        documents: response.documents,
+        total: response.total,
+      }
     }
+
+    const execute = async ({ includeLandSchemaFilters = true, includeKeywordSearch = true } = {}) => {
+      const queries = buildQueries({ includeLandSchemaFilters, includeKeywordSearch })
+      if (mode === 'all') {
+        return listAll(queries)
+      }
+      return listPaged(queries)
+    }
+
+    const attempted = new Set()
+    let includeLandSchemaFilters = true
+    let includeKeywordSearch = true
+    let lastError = null
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const key = `${includeLandSchemaFilters ? '1' : '0'}-${includeKeywordSearch ? '1' : '0'}`
+      if (attempted.has(key)) {
+        break
+      }
+      attempted.add(key)
+
+      try {
+        return await execute({
+          includeLandSchemaFilters,
+          includeKeywordSearch,
+        })
+      } catch (error) {
+        lastError = error
+        let shouldRetry = false
+
+        if (includeLandSchemaFilters && isMissingSchemaAttributeError(error, LAND_SCHEMA_FILTER_ATTRIBUTES)) {
+          includeLandSchemaFilters = false
+          shouldRetry = true
+        }
+
+        if (includeKeywordSearch && isMissingFulltextIndexError(error)) {
+          includeKeywordSearch = false
+          shouldRetry = true
+        }
+
+        if (!shouldRetry) {
+          throw error
+        }
+      }
+    }
+
+    throw lastError || new Error('Unable to load listings.')
   },
 
   listLandlordListings: async ({ landlordId }) => {

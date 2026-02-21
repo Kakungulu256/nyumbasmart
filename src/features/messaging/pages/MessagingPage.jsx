@@ -10,10 +10,23 @@ import { dbService, Query } from '@/services/appwrite/db'
 import { realtimeService } from '@/services/appwrite/realtime'
 import { buildConversationId, messagingService } from '@/features/messaging/services/messagingService'
 
-function fullName(profile) {
-  const firstName = String(profile?.firstName || '').trim()
+function lastNameLabel(profile, fallback = 'User') {
   const lastName = String(profile?.lastName || '').trim()
-  return `${firstName} ${lastName}`.trim()
+  return lastName || fallback
+}
+
+function participantDisplayName(profile, fallbackLabel = 'User') {
+  const lastName = String(profile?.lastName || '').trim()
+  if (lastName) {
+    return lastName
+  }
+
+  const firstName = String(profile?.firstName || '').trim()
+  if (firstName) {
+    return firstName
+  }
+
+  return lastNameLabel(profile, fallbackLabel)
 }
 
 function formatTimestamp(value) {
@@ -90,7 +103,7 @@ function upsertConversationPreview(conversations, message, currentUserId, select
 
 export function MessagingPage() {
   const [searchParams] = useSearchParams()
-  const { user } = useAuth()
+  const { user, role } = useAuth()
 
   const [loadingConversations, setLoadingConversations] = useState(true)
   const [loadingMessages, setLoadingMessages] = useState(false)
@@ -402,7 +415,8 @@ export function MessagingPage() {
 
   const selectedParticipantProfile = selectedConversation ? profilesByUserId[selectedConversation.participantId] : null
   const selectedListing = selectedConversation ? listingsById[selectedConversation.listingId] : null
-  const selectedParticipantName = fullName(selectedParticipantProfile) || selectedConversation?.participantId || 'User'
+  const counterpartyFallbackLabel = role === 'landlord' ? 'Tenant' : role === 'tenant' ? 'Landlord' : 'User'
+  const selectedParticipantName = participantDisplayName(selectedParticipantProfile, counterpartyFallbackLabel)
 
   return (
     <div className="space-y-4">
@@ -430,7 +444,7 @@ export function MessagingPage() {
                 {conversations.map((conversation) => {
                   const participantProfile = profilesByUserId[conversation.participantId]
                   const listing = listingsById[conversation.listingId]
-                  const participantName = fullName(participantProfile) || conversation.participantId
+                  const participantName = participantDisplayName(participantProfile, counterpartyFallbackLabel)
                   const isSelected = conversation.conversationId === selectedConversationId
 
                   return (
@@ -448,7 +462,7 @@ export function MessagingPage() {
                         <p className="line-clamp-1 text-sm font-semibold text-slate-900">{participantName}</p>
                         {conversation.unreadCount > 0 && <Badge variant="danger">{conversation.unreadCount}</Badge>}
                       </div>
-                      <p className="mt-1 line-clamp-1 text-xs text-slate-600">{listing?.title || conversation.listingId}</p>
+                      <p className="mt-1 line-clamp-1 text-xs text-slate-600">{listing?.title || 'Listing'}</p>
                       <p className="mt-1 line-clamp-1 text-xs text-slate-500">{conversation.lastMessageBody || 'Start a conversation'}</p>
                       <p className="mt-1 text-[11px] text-slate-400">{formatTimestamp(conversation.lastMessageAt)}</p>
                     </button>
@@ -467,7 +481,7 @@ export function MessagingPage() {
                   <CardTitle>{selectedParticipantName}</CardTitle>
                   {selectedConversation.unreadCount > 0 && <Badge variant="warning">{selectedConversation.unreadCount} unread</Badge>}
                 </div>
-                <p className="text-xs text-slate-600">{selectedListing?.title || selectedConversation.listingId}</p>
+                <p className="text-xs text-slate-600">{selectedListing?.title || 'Listing'}</p>
                 {selectedListing && (
                   <Link className="text-xs font-semibold text-brand-700 hover:underline" to={`/listings/${selectedListing.$id}`}>
                     View listing
@@ -485,6 +499,7 @@ export function MessagingPage() {
                   ) : (
                     messages.map((message) => {
                       const isMine = message.senderId === user?.$id
+                      const senderLabel = isMine ? 'You' : selectedParticipantName
                       return (
                         <div className={`flex ${isMine ? 'justify-end' : 'justify-start'}`} key={message.$id}>
                           <article
@@ -492,6 +507,7 @@ export function MessagingPage() {
                               isMine ? 'bg-brand-700 text-white shadow-brand-900/10' : 'border border-slate-200 bg-white text-slate-800'
                             }`}
                           >
+                            <p className={`mb-1 text-[11px] font-semibold ${isMine ? 'text-white/90' : 'text-slate-500'}`}>{senderLabel}</p>
                             <p className="whitespace-pre-wrap break-words">{message.body}</p>
                             <p className={`mt-1 text-[11px] ${isMine ? 'text-white/80' : 'text-slate-400'}`}>
                               {formatTimestamp(normalizeMessageTimestamp(message))}
